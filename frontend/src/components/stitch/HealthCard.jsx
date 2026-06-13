@@ -1,87 +1,42 @@
 import React from 'react';
 
 const GRADE_CONFIG = {
-  A: { label: 'Excellent', color: '#15803d', bg: '#dcfce7', ring: '#16a34a', bar: 95, barColor: '#16a34a' },
-  B: { label: 'Good',      color: '#92400e', bg: '#fef3c7', ring: '#d97706', bar: 75, barColor: '#d97706' },
-  C: { label: 'Fair',      color: '#9a3412', bg: '#ffedd5', ring: '#ea580c', bar: 55, barColor: '#ea580c' },
-  D: { label: 'Acceptable',color: '#7f1d1d', bg: '#fee2e2', ring: '#dc2626', bar: 35, barColor: '#dc2626' },
+  A: { label: 'Excellent',  sublabel: 'Like new condition',       color: '#15803d', bg: '#f0fdf4', accent: '#16a34a', score: 95, pill: '#bbf7d0' },
+  B: { label: 'Very Good',  sublabel: 'Light cosmetic wear',      color: '#b45309', bg: '#fffbeb', accent: '#d97706', score: 75, pill: '#fde68a' },
+  C: { label: 'Good',       sublabel: 'Visible wear, functional', color: '#c2410c', bg: '#fff7ed', accent: '#ea580c', score: 55, pill: '#fed7aa' },
+  D: { label: 'Acceptable', sublabel: 'Heavy wear or defects',    color: '#b91c1c', bg: '#fef2f2', accent: '#dc2626', score: 35, pill: '#fecaca' },
 };
 
-const CIRCUMFERENCE = 2 * Math.PI * 28; // r=28
+const CHECKLIST = [
+  'Display & Screen',
+  'Battery Health',
+  'Buttons & Ports',
+  'Camera & Audio',
+  'Wireless Connectivity',
+  'Software & Firmware',
+  'Accessories',
+  'Factory Reset',
+];
 
-const GradeRing = ({ grade, config }) => {
-  const filled = (config.bar / 100) * CIRCUMFERENCE;
-  return (
-    <div className="flex flex-col items-center gap-1.5">
-      <div className="relative w-20 h-20 flex items-center justify-center">
-        {/* Background ring */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 64 64">
-          <circle cx="32" cy="32" r="28" fill="none" stroke="#e5e7eb" strokeWidth="5" />
-          <circle
-            cx="32" cy="32" r="28" fill="none"
-            stroke={config.ring}
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray={`${filled} ${CIRCUMFERENCE}`}
-            style={{ transition: 'stroke-dasharray 0.6s ease' }}
-          />
-        </svg>
-        {/* Grade letter */}
-        <div
-          className="relative z-10 w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl shadow-sm"
-          style={{ background: config.bg, color: config.ring }}
-        >
-          {grade}
-        </div>
-      </div>
-      <div className="text-center">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: config.ring }}>
-          {config.label}
-        </p>
-        <p className="text-[10px] text-gray-400 mt-0.5">AI Condition Grade</p>
-      </div>
-    </div>
-  );
-};
-
-const MetricBar = ({ label, value, percent, color }) => (
-  <div>
-    <div className="flex justify-between items-baseline mb-1">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</span>
-      <span className="text-xs font-bold text-gray-700">{value}</span>
-    </div>
-    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-      <div
-        className="h-full rounded-full"
-        style={{ width: `${percent}%`, background: color, transition: 'width 0.6s ease' }}
-      />
-    </div>
-  </div>
-);
-
-const CheckPill = ({ text, ok = true }) => (
-  <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border
-    ${ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-    {ok ? '✓' : '✗'} {text}
-  </span>
+const Check = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
+    <circle cx="7" cy="7" r="7" fill="#16a34a"/>
+    <path d="M4 7l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
 );
 
 const QRCode = () => (
-  <svg width="52" height="52" viewBox="0 0 52 52" className="flex-shrink-0 rounded">
-    <rect width="52" height="52" fill="white" />
-    {/* Top-left finder */}
+  <svg width="36" height="36" viewBox="0 0 52 52" className="flex-shrink-0">
+    <rect width="52" height="52" fill="white"/>
     <rect x="2"  y="2"  width="15" height="15" rx="1.5" fill="#131921"/>
     <rect x="4"  y="4"  width="11" height="11" rx="0.5" fill="white"/>
     <rect x="6"  y="6"  width="7"  height="7"  fill="#131921"/>
-    {/* Top-right finder */}
     <rect x="35" y="2"  width="15" height="15" rx="1.5" fill="#131921"/>
     <rect x="37" y="4"  width="11" height="11" rx="0.5" fill="white"/>
     <rect x="39" y="6"  width="7"  height="7"  fill="#131921"/>
-    {/* Bottom-left finder */}
     <rect x="2"  y="35" width="15" height="15" rx="1.5" fill="#131921"/>
     <rect x="4"  y="37" width="11" height="11" rx="0.5" fill="white"/>
     <rect x="6"  y="39" width="7"  height="7"  fill="#131921"/>
-    {/* Data modules */}
     <rect x="20" y="2"  width="4" height="4" fill="#131921"/>
     <rect x="26" y="2"  width="4" height="4" fill="#131921"/>
     <rect x="20" y="8"  width="4" height="4" fill="#131921"/>
@@ -111,96 +66,108 @@ const QRCode = () => (
 );
 
 const HealthCard = ({ grade = 'B', conditionSummary, completeness = 1.0, sellerName }) => {
-  const config = GRADE_CONFIG[grade] || GRADE_CONFIG.B;
-  const completenessPercent = Math.round(completeness * 100);
+  const cfg = GRADE_CONFIG[grade] || GRADE_CONFIG.B;
+  const completePct = Math.round(completeness * 100);
+  const passedCount = grade === 'D' ? 6 : grade === 'C' ? 7 : 8;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-md w-full max-w-sm overflow-hidden font-sans">
+    <div className="w-full rounded-lg overflow-hidden shadow-xl font-sans" style={{ maxWidth: 360 }}>
 
-      {/* Header */}
-      <div className="bg-[#131921] px-4 py-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[#febd69] text-base flex-shrink-0 font-bold">R</span>
-          <span className="text-white font-bold text-sm leading-tight whitespace-nowrap">Product Health Card</span>
+      {/* ── Header ── */}
+      <div className="bg-[#131921] px-4 py-2.5 flex items-center gap-2">
+        <div className="flex items-baseline gap-1.5 flex-1 min-w-0">
+          <span className="text-[#febd69] font-black text-sm tracking-tight">amazon</span>
+          <span className="text-white/50 text-[9px] font-bold tracking-[2px] uppercase">revive</span>
         </div>
-        <span className="flex-shrink-0 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-          AI Verified
+        <span className="text-[9px] font-bold text-[#131921] bg-[#febd69] px-2.5 py-0.5 rounded-sm tracking-wider uppercase whitespace-nowrap">
+          Health Card
         </span>
-      </div>
-
-      {/* Grade ring */}
-      <div className="pt-5 pb-4 px-4 flex flex-col items-center bg-gray-50 border-b border-gray-100">
-        <GradeRing grade={grade} config={config} />
-      </div>
-
-      <div className="px-4 py-4 space-y-4">
-        {/* Metrics */}
-        <div className="space-y-3">
-          <MetricBar
-            label="Overall Condition"
-            value={`${config.bar}/100`}
-            percent={config.bar}
-            color={config.barColor}
-          />
-          <MetricBar
-            label="Completeness"
-            value={`${completenessPercent}%`}
-            percent={completenessPercent}
-            color="#3b82f6"
-          />
-        </div>
-
-        {/* Verification pills */}
-        <div className="flex flex-wrap gap-1.5">
-          <CheckPill text="AI Graded" />
-          <CheckPill text="Hub Verified" />
-          {sellerName ? <CheckPill text="Seller Rated" /> : <CheckPill text="Amazon Stock" />}
-        </div>
-
-        <hr className="border-gray-100" />
-
-        {/* AI condition notes */}
-        {conditionSummary ? (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 flex items-center gap-1">
-              AI Condition Notes
-            </p>
-            <p className="text-xs text-gray-700 leading-relaxed">{conditionSummary}</p>
-          </div>
-        ) : (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 flex items-center gap-1">
-              AI Condition Notes
-            </p>
-            <p className="text-xs text-gray-500 italic">No notes provided.</p>
-          </div>
-        )}
-
-        {sellerName && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-            <span>Sold by <span className="font-semibold text-gray-800">{sellerName}</span></span>
-          </div>
-        )}
-
-        <hr className="border-gray-100" />
-
-        {/* QR section */}
-        <div className="flex items-center gap-3">
+        <div className="ml-2 rounded overflow-hidden flex-shrink-0">
           <QRCode />
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-gray-800 leading-tight">Scan to Verify</p>
-            <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">Cryptographically signed · GS1 Digital Link</p>
-          </div>
-        </div>
-
-        {/* Eco badge */}
-        <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
-          <span className="text-green-600 text-xs font-bold uppercase">eco</span>
-          <p className="text-[10px] text-green-700 leading-snug font-medium">
-            Est. <strong>0.21 kg CO₂</strong> saved vs. buying new
-          </p>
         </div>
       </div>
+
+      {/* ── Grade banner ── */}
+      <div className="px-4 py-4 flex items-center gap-3" style={{ background: cfg.bg }}>
+        {/* Grade badge */}
+        <div
+          className="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
+          style={{ background: cfg.accent }}
+        >
+          <span className="text-white font-black text-3xl leading-none">{grade}</span>
+        </div>
+
+        {/* Grade info + score bar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-2 mb-0.5">
+            <p className="text-base font-bold leading-tight" style={{ color: cfg.color }}>{cfg.label}</p>
+            <span className="text-xs font-bold tabular-nums" style={{ color: cfg.accent }}>{cfg.score}/100</span>
+          </div>
+          <p className="text-[11px] text-gray-500 mb-2">{cfg.sublabel}</p>
+          <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: 'rgba(0,0,0,0.08)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${cfg.score}%`, background: cfg.accent }}
+            />
+          </div>
+          <div className="flex items-center gap-1.5 mt-2">
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
+              style={{ background: cfg.pill, color: cfg.color }}
+            >
+              AI Condition Grade
+            </span>
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
+              style={{ background: cfg.pill, color: cfg.color }}
+            >
+              Completeness {completePct}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Inspection checklist ── */}
+      <div className="bg-white">
+        <div className="px-4 py-2.5 flex items-center justify-between border-t border-b border-[#EAEDED]" style={{ background: '#F7F8F8' }}>
+          <span className="text-[10px] font-bold text-[#0F1111] uppercase tracking-widest">
+            Inspection Report
+          </span>
+          <span className="text-[10px] font-bold" style={{ color: cfg.accent }}>
+            {passedCount}/{CHECKLIST.length} Passed
+          </span>
+        </div>
+        <div className="divide-y divide-[#EAEDED]">
+          {CHECKLIST.map((item) => (
+            <div key={item} className="flex items-center gap-2.5 px-4 py-2">
+              <Check />
+              <span className="text-xs text-[#0F1111]">{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Condition notes ── */}
+      <div className="px-4 py-3 border-t border-[#EAEDED]" style={{ background: '#F7F8F8' }}>
+        <p className="text-[10px] font-bold text-[#0F1111] uppercase tracking-widest mb-1">Condition Notes</p>
+        <p className="text-[13px] text-gray-600 leading-relaxed">
+          {conditionSummary || <span className="italic text-gray-400">No notes provided.</span>}
+        </p>
+        {sellerName && (
+          <p className="text-[11px] text-gray-500 mt-1.5">
+            Sold by <span className="font-semibold text-[#007185]">{sellerName}</span>
+          </p>
+        )}
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <svg className="w-3 h-3 text-green-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd"/>
+          </svg>
+          <span className="text-[11px] text-green-700 font-medium">
+            Est. <strong>0.21 kg CO₂</strong> saved vs. buying new
+          </span>
+        </div>
+      </div>
+
     </div>
   );
 };
