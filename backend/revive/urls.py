@@ -9,7 +9,9 @@ urlpatterns = [
     path('api/', include('core.urls.listings')),
     path('api/', include('core.urls.orders')),
     path('api/grade/', include('grade.urls')),
+    path('api/tryon/', include('grade.tryon_urls')),
     path('api/card/', include('trust.urls')),
     path('api/prevent/', include('prevent.urls')),
     path('api/credits/', include('green.urls')),
+    path('api/route/', include('route.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

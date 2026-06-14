@@ -124,7 +124,7 @@ const CheckoutPage = () => {
           {/* ── Order summary sidebar ── */}
           {(cart.length > 0 || success) && (
             <div className="lg:w-72 flex-shrink-0 space-y-3 sm:space-y-4">
-              <GreenCredits onRedeem={setRedeemedCredits} />
+              <GreenCredits onRedeem={setRedeemedCredits} cartTotal={cartTotal} />
 
               {/* Why Revive? */}
               <div className="bg-white rounded-lg shadow-sm border border-[#D5D9D9] p-3 sm:p-4">

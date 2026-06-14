@@ -139,55 +139,15 @@ At return initiation, a "keep it" nudge is shown: "Keep this order → earn 15 G
 
 ### Pillar 5 — Green Credits Wallet and Recommendations
 
-**Green Credits — buyer-only, behaviour-weighted, economically bounded:**
+**Green Credits — one earn rule, one spend rule:**
 
-Green Credits are exclusively a buyer-side reward. Sellers (like Rahul) receive real money (UPI transfer). Credits are never earned by sellers, donors, recyclers, or agent-pickup users.
+Earn: Credits vest when a purchase's return window closes with nothing returned. The system fires `POST /credits/vest` at window close. If the item is returned → no credits, period. Credits are promised at checkout ("keep this → earn +15 credits") but vest only on verified outcome.
 
-**The earn rules — category-weighted, not flat:**
+For Rahul (seller of unused items): Credits vest when his buyer's return window closes without a return. The flywheel: Priya earns credits → spends on Rahul's monitor → Rahul earns credits → spends on next second-life item.
 
-Credits are not awarded equally for every kept order. The earn rate scales with the category's return rate, because Amazon saves more logistics cost from a prevented return in high-return categories. The formula:
+Spend: Only on REVIVE second-life items (the refurb shelf). Not on new goods. Not as cashback. This ensures credits drive second-life demand, not first-life consumption.
 
-```
-credits_earned = BASE_RATE × category_return_rate_multiplier × order_value_band
-```
-
-Category multipliers (approximate, calibrated to Amazon India return data):
-- Fashion / footwear (30–35% return rate): 2.0× multiplier
-- Electronics / accessories (8–12% return rate): 0.8× multiplier  
-- Books / stationery (3–5% return rate): 0.5× multiplier
-- Home goods / kitchen (10–15% return rate): 1.0× multiplier (baseline)
-
-Order value bands (credits per kept order):
-- Below ₹500: 5 credits
-- ₹500–₹2,000: 10 credits × category multiplier
-- ₹2,000–₹10,000: 20 credits × category multiplier
-- Above ₹10,000: 30 credits × category multiplier (capped)
-
-Example: Priya keeps a ₹800 pair of shoes (fashion, 2.0× multiplier) → 10 × 2.0 = **20 credits**. A buyer keeps a ₹800 phone charger (electronics, 0.8×) → 10 × 0.8 = **8 credits**. The reward is proportional to the actual cost Amazon avoids.
-
-**Earn trigger — only self-drop, never agent pickup:**
-
-Credits only vest when the buyer chose kirana self-drop as their return method AND the return window closes with no return initiated. If the customer scheduled an agent pickup for their return, Amazon already bore the agent cost on their behalf — giving credits on top of that would make the high-cost route the most rewarding one, which is economically backwards. Agent pickup = convenient, fast, no credits. Kirana self-drop = slightly more effort, earns credits.
-
-This single rule aligns three incentives simultaneously: it rewards the low-cost logistics option, it rewards keeping orders, and it rewards using Amazon's existing I Have Space network.
-
-**Credit value and redemption — calibrated to be meaningful but not margin-destroying:**
-
-1 credit = ₹0.10, redeemable only on REVIVE second-life items. Redemption is capped at 20% of the second-life item's price per transaction. 200 credits = ₹20 off a second-life purchase. This is meaningful enough to feel rewarding (a typical fashion order earns 20 credits = ₹2, so after ~10 kept orders a customer has ₹20 to spend) but small enough that it costs Amazon a fraction of what a prevented return saves (average Indian e-commerce return costs ₹80–₹150 in logistics; 20 credits = ₹2 cost, so Amazon keeps ₹78–₹148 of the saving).
-
-**Spend rules:**
-- Only on REVIVE second-life items (S5 storefront). Not on new goods. Not as cashback or bank transfer.
-- Cap: 20% of purchase price per transaction.
-- Expiry: 12 months rolling from earning date.
-- Alternative: Donate credits to a verified NGO partner (e-waste recycling, tree planting). Minimum 50 credits to donate.
-
-**Vesting rules (anti-gaming):**
-- Credits are shown as "pending" at checkout when the customer opts for kirana self-drop.
-- They vest only at `POST /credits/vest` fired when the return window closes with no return recorded.
-- If a return is initiated before window close → pending credits are cancelled immediately.
-- Credits vest per order line, not per order — if a customer keeps 3 items and returns 1, they earn credits only for the 2 kept items.
-
-Anti-gaming table: [unchanged in Section 13]
+Anti-gaming: Credits vest on verified closed events, not on user actions. No credits for donating, recycling, or listing. 6–12 month rolling expiry. Redeemable on refurb shelf or donated to a verified environmental NGO partner.
 
 **"Certified Refurbished For You" rail:**
 Hybrid ALS + CLIP + grade + proximity recommender. ALS captures collaborative patterns; CLIP handles cold-start for new items (zero interactions needed — scored from the graded images immediately). Surfaced on the Amazon homepage and search results page.
@@ -236,10 +196,7 @@ Hybrid ALS + CLIP + grade + proximity recommender. ALS captures collaborative pa
 **Physical flow (returns, Priya):**
 1. Priya initiates return (any reason) → AI grading fires automatically.
 2. Grade result + routing decision shown on screen. Refund confirmed immediately.
-3. Priya is shown two handover options:
-   - **"Drop it yourself at [Kirana name] 200 m away → Earn Green Credits"** — the item moves when Priya does. Credits vest when her next kept order's window closes (if she also chose kirana drop for that order).
-   - **"Schedule a home pickup → No Green Credits"** — convenient, costs Priya nothing extra, but earns no credits because Amazon bears the Flex agent cost.
-   The credit difference is the policy lever that steers customers toward the lower-cost logistics option without mandating it.
+3. Priya chooses: self-drop at kirana (bonus credits) or schedule agent pickup.
 4. Priya drops the item at the nearest I Have Space kirana partner (2–4 km max, shown on map).
 5. Kirana partner scans the QR code on the REVIVE label using the I Have Space app (existing Amazon tool, no new app needed for kirana).
 6. Kirana holds item for up to 5 days.
@@ -360,11 +317,12 @@ Hybrid ALS + CLIP + grade + proximity recommender. ALS captures collaborative pa
 **S1 — My Orders page**
 - No "Give it a second life" button added (this was a previous design error).
 - The existing "Return or Replace Items" button is unchanged.
-- One addition: a Green Credits balance chip in the account header — "🌿 220 credits" — tapping opens the Credits Wallet (S8).
+- One addition: a Green Credits balance chip in the header — "🌿 220 credits" — tapping opens the Credits Wallet (S8).
+- One addition: a small CO₂ chip on each order line showing estimated impact of the previous delivery.
 
 **S2 — Return Wizard (reason selection)**
 - Existing screen. Unchanged. Customer selects return reason as today.
-- One addition at the bottom of the reason screen: a "keep it" nudge card — "Keep this order instead → earn [N] Green Credits when the return window closes" (N is pre-calculated by the credits engine based on item category and value). CTA: "Keep it — I changed my mind." If tapped → return cancelled, credits queued to vest at window close.
+- One addition at the bottom of the reason screen: a "keep it" nudge card — "Keep this order instead → earn +15 credits in 7 days" with a CTA button. If tapped → return cancelled, credits queued to vest at window close.
 - If customer proceeds with return → next screen is S3 (AI grading), not the existing packaging/shipping screen.
 
 **S7 — Checkout**
@@ -380,29 +338,16 @@ Hybrid ALS + CLIP + grade + proximity recommender. ALS captures collaborative pa
 
 Triggered: automatically after S2 reason selection for any return. Also shown after photo upload in the Sell It flow (S4).
 
-Contents shown to the customer:
+Contents:
 - Product photo with defect bounding boxes overlaid in orange
 - Grade badge (A / B / C / D) with confidence percentage
-- Grading time shown ("1.4s") — builds trust in the AI
-- Defect list in plain language: "Light scuff on left toe — cosmetic only", "Original box missing"
-- Simple routing outcome message (not internal EV numbers): "Your item will be resold to someone nearby" / "Your item will be refurbished" / "Your item will be donated to [NGO name]" — no EV figures, no logistics math, no heatmap
-- For returns: Refund confirmation banner: "Refund of ₹499 initiated — arrives in 2–3 hours"
-- For returns: a simple environmental message (personal and warm, not a data dashboard): "This item will stay in your city instead of travelling to a warehouse." One sentence. No km numbers, no CO₂ figures — those are meaningful to Amazon's internal reporting, not to Priya's experience.
-- Handover choice (for returns, Tier 1 only): two options shown as cards:
-  - "Drop it yourself at [Kirana Name] · 200 m away · Open till 9 PM → Earn Green Credits"
-  - "Schedule a pickup from your home → No credits (convenient option)"
-  - Kirana shown with name, distance, and today's hours. No map. No heatmap.
-- For Tier 2 returns: only the agent option is shown (Route B blocked). Message: "A Flex agent will collect this from your doorstep — we'll schedule that now."
-- For self-list (Sell It): "Your item is now listed. Keep it at home — we'll notify you the moment someone purchases it."
-
-What S3 does NOT show (internal only, visible in the ops console):
-- The EV formula breakdown
-- The demand heatmap
-- CO₂ savings in kg
-- Kilometres avoided
-- Logistics cost comparison
-
-The ops console (Amazon internal / hackathon demo screen) shows all of the above — the heatmap, the EV breakdown, the routing animation. That is the demo wow moment for judges and for Amazon's product team. It is not the customer experience.
+- Grading time shown ("1.4s")
+- Defect list: "Light scuff on left toe — cosmetic only", "Box missing"
+- Routing decision: "Resell locally · EV ₹312 vs Warehouse ₹–40" — with a Leaflet mini-map showing: item pin (seller's city), demand heatmap glowing in the neighbourhood, buyer cluster 5 km away
+- CO₂ saving: "590 km avoided · 4.2 kg CO₂ saved vs warehouse route"
+- Refund confirmation toast (for returns): "Refund of ₹499 initiated — arrives in 2–3 hours"
+- Handover choice (for returns): "Drop at kirana hub 200 m away (+2 bonus credits)" or "Schedule agent pickup (standard credits)". Kirana shown on map with name, distance, hours.
+- For self-list (Sell It): "Your item is listed. You'll be notified when a buyer purchases. Keep it at home until then."
 
 **S4 — Sell It (new — Rahul's entry point)**
 
@@ -465,31 +410,15 @@ Contents:
 Entry: Account → Green Credits (below "Your Orders" and "Returns & Orders").
 
 Contents:
-- Total balance: "220 credits = ₹22 discount on second-life items"
-- How credits work (one-line explainer, always visible): "Earn credits by keeping orders and dropping returns at a kirana yourself. Spend them on REVIVE second-life items."
-- Pending credits: orders in their return window with kirana self-drop chosen, showing countdown: "Air Fryer — window closes in 4 days → 16 credits pending"
-- Earning history with category context: "Kept ₹1,200 kurta (fashion) + kirana drop → +24 credits · Jun 10", "Kept ₹800 phone case (electronics) + kirana drop → +8 credits · Jun 8"
-- Spending history: "Used 100 credits on REVIVE refurb headphones → −₹10 · Jun 8"
-- Earn rate explainer (collapsible): shows the category multiplier table so customers understand why fashion earns more than electronics
-- Redemption: "Use on REVIVE second-life items — up to 20% off any purchase" → link to S5
-- Donate option: "Donate 50+ credits to [NGO name]" — converts credits to a verified environmental action
-- Expiry: "Credits expire 12 months after earning. Your oldest credits expire [date]."
-- What does NOT earn credits (visible, honest): "Agent pickup returns, donations, recycling, selling items"
+- Total balance (e.g., "220 credits = ₹22 discount")
+- Pending credits: items whose return windows haven't closed yet, with countdown
+- Earning history: "Kept Air Fryer order → +20 credits · Jun 10"
+- Spending history: "Used 100 credits on REVIVE refurb headphones · Jun 8"
+- Redemption: "Use on second-life items only" — with a link to S5 REVIVE Storefront
+- Donate option: "Donate your credits to [verified NGO name] — plant a tree / fund e-waste recycling"
+- Expiry notice: credits expire 12 months after earning if unused
 
-**S9 — Ops Console (Amazon internal / hackathon demo screen)**
-
-Not customer-facing. This is the screen that demonstrates REVIVE's intelligence to judges and to Amazon's product team.
-
-Contents:
-- Live item feed: every graded item with its grade, EV breakdown, and assigned route
-- Leaflet demand heatmap: item pins across the city, demand density glowing per geohash cell, route animations showing items flowing toward nearby buyers instead of a distant warehouse
-- EV breakdown per item: "Resell locally ₹312 vs Warehouse ₹–40 vs Liquidate ₹18"
-- Routing decision log: Stage 1 demand gate outputs + Stage 2 route selection per item
-- Metrics dashboard: average km saved per item, CO₂ avoided this week, local match rate, items escalated to FC vs. sold locally
-- Confidence queue: items below 70% grading confidence flagged for human review
-- Disposition summary: items by route (P2P / Kirana / City-wide / SPN / FC / Donated)
-
-This is the "brain" screen — the one that proves REVIVE is a decision engine, not just a resale listing tool.
+**Agent app (Flex agent / kirana-side — internal tool)**
 
 Not a customer-facing page, but required for Route A and Route B:
 
@@ -511,19 +440,19 @@ For kirana partners (I Have Space app — existing app, new REVIVE section):
 
 ## 9. Complete Customer Journey Maps
 
-### Journey 1 — Priya returns shoes (Tier 1, Route B)
+### Journey 1 — Priya returns shoes (Tier 1, Route B → possible Route A)
 
 1. My Orders (S1) → taps "Return or Replace Items"
-2. Return Wizard (S2) → selects "Doesn't fit". Sees keep-it nudge card: "Keep this → earn 20 Green Credits in 7 days." Ignores it, proceeds.
-3. AI Grading (S3) fires automatically. Grade B in 1.4s. Defect boxes shown. Simple message: "Your shoes will be resold to someone nearby." Refund ₹499 initiated.
-4. Handover choice shown: "Drop at [Kirana name] 200 m away → Earn Green Credits" vs "Schedule home pickup → No credits." Priya chooses kirana drop (to earn credits).
+2. Return Wizard (S2) → selects "Doesn't fit". Sees keep-it nudge, ignores it.
+3. AI Grading (S3) fires automatically → agent guided capture (or self-photo express). Grade B in 1.4s. Defect boxes shown. Routing decision: "Resell locally ₹312 vs Warehouse ₹–40." Refund ₹499 initiated. CO₂ saving shown.
+4. Handover choice: "Drop at Priya Stores kirana 200 m away (+2 bonus credits)" or "Schedule pickup." Priya chooses kirana drop.
 5. Priya drops shoes at kirana. Kirana scans QR. Item registered.
-6. Within 5 days, a buyer 4 km away purchases the shoes on S5.
-7. Buyer collects from the kirana using OTP. Kirana scans release.
-8. Day 14 (Priya's original return window close — separate event): Priya's credits vest. She kept her previous order AND used the kirana drop → **20 credits** (fashion tier multiplier 2.0× on ₹800 kept order, tracked from her last non-returned purchase). The returned shoes themselves do not earn her credits — credits are earned by keeping, not by returning.
-9. Buyer's 7-day guarantee window runs. No dispute → Health Card closed.
+6. Within 5 days, a buyer 4 km away purchases the shoes on the REVIVE storefront (S5).
+7. Buyer collects from the kirana using OTP. Kirana scans release. Payment logic closed.
+8. Day 8 (return window close): Priya's Green Credits vest (+12 credits shown in wallet, S8).
+9. Buyer's guarantee: 7-day "not as described" window. If no dispute → seller (original seller/Amazon) marked complete.
 
-Note: Priya earns credits from orders she kept, not from returning these shoes. The keep-it nudge on S2 was the opportunity she passed up.
+If no local buyer in 5 days: shoes consolidate to delivery station → listed nationally → Route C1.
 
 ### Journey 2 — Rahul lists unused baby monitor (Tier 2, Route A)
 
@@ -532,14 +461,13 @@ Note: Priya earns credits from orders she kept, not from returning these shoes. 
 3. 6 photo prompts + battery screenshot (device at 91%) + optional IMEI.
 4. Grade A result. Price suggested: ₹2,340. Rahul adjusts to ₹2,200. Demand signal: "47 parents searched for this nearby."
 5. Item listed. Rahul keeps it at home. Nothing moves.
-6. 3 days later: buyer 3.8 km away purchases. Rahul gets app notification: "Your item has been sold — a Flex agent will collect it tomorrow."
+6. 3 days later: buyer 3.8 km away purchases. Rahul gets app notification with prepaid label.
 7. Since Tier 2: Route A (agent doorstep) mandatory. Flex agent dispatched to Rahul.
 8. Agent performs doorstep verification: 6 photos + powers-on check + battery screenshot re-confirmed.
 9. Agent seals in bubble-wrapped rigid box (auto-selected by agent app for electronics category).
 10. Item ships directly to buyer. No kirana, no warehouse.
 11. Buyer receives, has 30-day guarantee window.
-12. Day 31 (window close, no dispute): **Rahul receives UPI transfer of ₹2,200 minus REVIVE platform commission (e.g., 8%).** Rahul gets money. Rahul does not get Green Credits.
-13. Buyer's Green Credits vest: buyer kept a ₹2,200 electronics purchase and used kirana self-drop (or did they schedule agent delivery here? — buyer chose home delivery from Rahul, so no kirana self-drop involved, therefore no credits for the buyer either on this transaction). Credits vest for buyers only when they choose kirana self-drop for their own returns on separately kept orders.
+12. Day 31 (window close, no dispute): UPI transfer to Rahul. Buyer's Green Credits vest (+18 credits).
 
 ### Journey 3 — Buyer purchases from REVIVE storefront
 
@@ -676,14 +604,11 @@ def routing_ev(item, buyer_location, tier):
 
 | Potential exploit | How it's blocked |
 |---|---|
-| Schedule agent pickup, then claim credits | Agent pickup earns zero credits by design. Only kirana self-drop earns credits. No override. |
-| Return an item then immediately relist it for credits | Credits are earned by keeping orders, not by any return action. Returning earns nothing. |
-| Drop at kirana but then initiate return within window | Return initiation cancels pending credits immediately at the same event trigger. |
-| Donate junk to earn credits | Donate and recycle earn zero credits. |
-| List an item, claim it sold, farm credits | Sellers get money, not credits. Credits are buyer-only, on their own separate purchases. |
-| Game the keep-it nudge by accepting then returning the next day | Credits vest only at window close. Return before window close → credits cancelled, no partial vest. |
-| Buy cheap items repeatedly just to earn credits | Earn rate is low (₹0.10 per credit; fashion ₹800 order earns 20 credits = ₹2). The economics don't reward churn. Return window closure is the only verified trigger. |
-| Inflate category to get higher multiplier | Category is auto-detected from the Amazon product catalog at purchase, not self-declared. |
+| Return an item then immediately relist it for credits | Credits only vest on the *original purchase's* window close — not on the resale. |
+| Fake a return drop-off to trigger credits | Credits vest on the closed return window, not on the drop-off scan. |
+| Donate junk to earn credits | Donate and recycle paths earn zero credits. |
+| List an item, claim it sold, farm credits | Buyer's credits vest only on their own purchase's window close, independently. Seller gets money not credits. |
+| Game the keep-it nudge by accepting then returning later | Credits are promised but not vested at nudge acceptance. They vest at verified window close. If returned before window close → credits cancelled. |
 
 ---
 

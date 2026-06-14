@@ -2,8 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import HealthCard from '../components/stitch/HealthCard'
-import api from '../api/client'
+import VirtualTryOn from '../components/stitch/VirtualTryOn'
+import api, { getHealthCard } from '../api/client'
 import { useCart } from '../context/CartContext'
+
+const CLOTHING_KEYWORDS = ['clothing', 'fashion', 'apparel', 'garment', 'textile', 'wear', 'shirt', 'dress', 'jacket', 'pants', 'jeans', 'top', 'blouse', 'skirt', 'coat', 'shoes', 'footwear']
+
+const isClothing = (category = '') =>
+  CLOTHING_KEYWORDS.some((kw) => category.toLowerCase().includes(kw))
 
 const GRADE_STYLE = {
   A: 'bg-green-100 text-green-800 border-green-200',
@@ -36,6 +42,8 @@ const ProductDetailPage = () => {
   const [notFound, setNotFound] = useState(false)
   const [added, setAdded] = useState(false)
   const [showHealthCard, setShowHealthCard] = useState(false)
+  const [cardData, setCardData] = useState(null)
+  const [cardLoading, setCardLoading] = useState(false)
 
   useEffect(() => {
     api.get(`/api/listings/${id}/`)
@@ -45,6 +53,21 @@ const ProductDetailPage = () => {
   }, [id])
 
   const inCart = cart.some((item) => Number(item.id) === Number(id))
+
+  const handleViewHealthCard = async () => {
+    setShowHealthCard(true)
+    if (!cardData && !cardLoading) {
+      setCardLoading(true)
+      try {
+        const res = await getHealthCard(listing.id)
+        setCardData(res.data)
+      } catch {
+        // card not yet generated — falls back to prop-based display
+      } finally {
+        setCardLoading(false)
+      }
+    }
+  }
 
   const handleAddToCart = () => {
     if (!listing) return
@@ -281,11 +304,18 @@ const ProductDetailPage = () => {
               <hr className="border-[#D5D9D9]" />
 
               <button
-                onClick={() => setShowHealthCard(true)}
+                onClick={handleViewHealthCard}
                 className="w-full py-2 rounded text-sm font-semibold bg-[#232F3E] hover:bg-[#131921] text-[#febd69] border border-[#3d5166] transition-colors"
               >
                 View Product Health Card
               </button>
+
+              {isClothing(product.category) && (
+                <VirtualTryOn
+                  garmentImage={listing.image}
+                  garmentTitle={product.title}
+                />
+              )}
 
               <hr className="border-[#D5D9D9]" />
 
@@ -334,6 +364,8 @@ const ProductDetailPage = () => {
                     conditionSummary={listing.condition_summary}
                     completeness={listing.completeness}
                     sellerName={listing.seller_name}
+                    cardData={cardData}
+                    loading={cardLoading}
                   />
                 </div>
               </div>
