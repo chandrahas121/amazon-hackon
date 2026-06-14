@@ -8,6 +8,14 @@ class User(AbstractUser):
     return_rate = models.FloatField(default=0.0)
     geohash5 = models.CharField(max_length=10, blank=True, default='')
 
+    # Pillar 4 — Fit-Twin body measurements + learned size profile
+    height_in = models.FloatField(blank=True, null=True)
+    weight_lb = models.FloatField(blank=True, null=True)
+    bust_in = models.FloatField(blank=True, null=True)
+    body_type = models.CharField(max_length=40, blank=True, default='')
+    age = models.IntegerField(blank=True, null=True)
+    fit_size_profile = models.JSONField(blank=True, default=dict)
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
@@ -24,6 +32,8 @@ class Product(models.Model):
     mrp = models.DecimalField(max_digits=10, decimal_places=2)
     reference_image_url = models.URLField(max_length=500)
     description = models.TextField(blank=True)
+    # Pillar 4 — link to the clothing-fit dataset item this product represents
+    fit_item_id = models.CharField(max_length=40, blank=True, default='')
 
     def __str__(self):
         return self.title
@@ -88,6 +98,7 @@ class Order(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     listing = models.ForeignKey(Listing, null=True, on_delete=models.SET_NULL, related_name='orders')
+    size = models.FloatField(null=True, blank=True)   # chosen size — feeds fit_size_profile
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     is_p2p = models.BooleanField(default=False)
     escrow_released = models.BooleanField(default=False)
