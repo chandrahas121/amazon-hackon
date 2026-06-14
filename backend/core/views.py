@@ -255,6 +255,58 @@ class ListingDetailView(APIView):
         return Response(ListingSerializer(listing).data)
 
 
+class RecommendView(APIView):
+    """
+    GET /api/recommend/?n=8  — "Certified Refurbished For You" rail (Pillar 5).
+
+    Hybrid intent: ALS + CLIP + grade + proximity. The Django venv has no
+    numpy/torch, so this is the numpy-free ranker: grade boost + proximity
+    (same geohash region) + source preference (Renewed/P2P) over A/B-grade
+    second-life listings. Cold-start safe — needs zero interaction history.
+    """
+    permission_classes = [AllowAny]
+
+    _GRADE_BOOST = {'A': 1.0, 'B': 0.8, 'C': 0.4, 'D': 0.0}
+    _SOURCE_BOOST = {'renewed': 0.30, 'p2p': 0.20, 'warehouse': 0.10, 'return': 0.10}
+
+    def get(self, request):
+        try:
+            n = min(int(request.query_params.get('n', 8)), 20)
+        except (TypeError, ValueError):
+            n = 8
+
+        user_geo = request.user.geohash5 if getattr(request, 'user', None) and request.user.is_authenticated else ''
+
+        qs = (Listing.objects
+              .filter(status='listed', grade__in=['A', 'B'])
+              .select_related('product', 'seller'))
+
+        scored = []
+        for l in qs[:200]:
+            grade_boost = self._GRADE_BOOST.get(l.grade, 0.4)
+            source_boost = self._SOURCE_BOOST.get(l.source, 0.1)
+            prox = 0.25 if (user_geo and l.geohash5 and user_geo[:4] == l.geohash5[:4]) else 0.0
+            score = 0.55 * grade_boost + 0.30 * source_boost + 0.15 * prox
+
+            reasons = []
+            if prox > 0:        reasons.append('available near you')
+            if l.source == 'renewed': reasons.append('Amazon Renewed')
+            elif l.source == 'p2p':   reasons.append('Amazon-verified P2P')
+            reasons.append(f'Grade {l.grade} certified')
+            scored.append((score, l, ' · '.join(reasons[:2])))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = scored[:n]
+
+        results = []
+        for score, l, reason in top:
+            data = ListingSerializer(l).data
+            data['rec_score'] = round(score, 4)
+            data['rec_reason'] = reason
+            results.append(data)
+        return Response({'results': results, 'count': len(results)})
+
+
 class MyListingsView(APIView):
     """GET /api/listings/mine/ — all listings created by the logged-in seller."""
     permission_classes = [IsAuthenticated]

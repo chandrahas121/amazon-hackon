@@ -77,18 +77,24 @@ class CreateListingSerializer(serializers.Serializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
+    listing_id = serializers.SerializerMethodField()
     listing_title = serializers.SerializerMethodField()
     listing_price = serializers.SerializerMethodField()
     listing_image = serializers.SerializerMethodField()
     listing_grade = serializers.SerializerMethodField()
     listing_grade_display = serializers.SerializerMethodField()
     listing_source_display = serializers.SerializerMethodField()
+    listing_category = serializers.SerializerMethodField()
+    listing_mrp = serializers.SerializerMethodField()
+    listing_chosen_path = serializers.SerializerMethodField()
+    listing_tier = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = (
-            'id', 'listing_title', 'listing_price', 'listing_image',
+            'id', 'listing_id', 'listing_title', 'listing_price', 'listing_image',
             'listing_grade', 'listing_grade_display', 'listing_source_display',
+            'listing_category', 'listing_mrp', 'listing_chosen_path', 'listing_tier',
             'status', 'is_p2p', 'escrow_released', 'return_window_closes', 'created_at',
         )
 
@@ -106,8 +112,23 @@ class OrderSerializer(serializers.ModelSerializer):
     def get_listing_grade(self, obj):
         return obj.listing.grade if obj.listing else None
 
+    def get_listing_id(self, obj):
+        return obj.listing.pk if obj.listing else None
+
     def get_listing_grade_display(self, obj):
         return obj.listing.get_grade_display() if obj.listing else None
 
     def get_listing_source_display(self, obj):
         return obj.listing.get_source_display() if obj.listing else None
+
+    def get_listing_category(self, obj):
+        return obj.listing.product.category if obj.listing else None
+
+    def get_listing_mrp(self, obj):
+        return str(obj.listing.product.mrp) if obj.listing else None
+
+    def get_listing_chosen_path(self, obj):
+        return obj.listing.chosen_path if obj.listing else None
+
+    def get_listing_tier(self, obj):
+        return obj.listing.tier if obj.listing else None
