@@ -118,7 +118,7 @@ const CheckoutPage = () => {
           {/* ── Order summary sidebar ── */}
           {(cart.length > 0 || success) && (
             <div className="lg:w-72 flex-shrink-0 space-y-3 sm:space-y-4">
-              <GreenCredits onRedeem={setRedeemedCredits} />
+              <GreenCredits onRedeem={setRedeemedCredits} cartTotal={cartTotal} />
 
               {/* Green credits promise — Pillar 5 */}
               <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">

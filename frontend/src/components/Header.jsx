@@ -1,16 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, ShoppingCart, Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { getCredits } from "../api/client";
 
 const NAV_ITEMS = (user, navigate, close) => [
   { label: 'All',          action: () => { navigate('/'); close(); } },
   { label: 'Shop Revive',  action: () => { navigate('/?source=p2p'); close(); }, highlight: true },
   { label: 'Renewed',      action: () => { navigate('/?source=renewed'); close(); } },
   { label: 'Warehouse',    action: () => { navigate('/?source=warehouse'); close(); } },
-  { label: 'List an Item', action: () => { navigate('/sell'); close(); } },
+  { label: 'Sell Unused Items', action: () => { navigate('/sell'); close(); } },
   ...(user ? [{ label: 'My Listings', action: () => { navigate('/my-listings'); close(); } }] : []),
+  ...(user ? [{ label: 'Green Credits', action: () => { navigate('/credits'); close(); } }] : []),
   ...(user ? [{ label: 'Orders',      action: () => { navigate('/orders'); close(); } }] : []),
 ];
 
@@ -21,6 +23,12 @@ const Header = () => {
   const { cart } = useCart();
   const [searchText, setSearchText] = useState(searchParams.get('q') || '');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [credits, setCredits] = useState(null);
+
+  useEffect(() => {
+    if (!user) { setCredits(null); return; }
+    getCredits().then((res) => setCredits(res.data.balance)).catch(() => setCredits(null));
+  }, [user]);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -95,6 +103,17 @@ const Header = () => {
               {user ? 'Sign out' : 'Sign in'}
             </p>
           </div>
+
+          {/* Green Credits chip */}
+          {user && credits != null && (
+            <div
+              onClick={() => navigate('/credits')}
+              className="cursor-pointer hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-[#1c3d2b] hover:bg-[#245038] text-[#a7f3d0] text-xs font-bold"
+              title="Green Credits"
+            >
+              <span>🌿</span><span>{credits}</span>
+            </div>
+          )}
 
           {/* Orders — hidden on mobile (in hamburger instead) */}
           <div
