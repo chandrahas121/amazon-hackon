@@ -203,5 +203,110 @@
     "image_hash": "75f660dc104bf5174d569f4a",
     "n_dino_detections": 0,
     "from_cache": false
+  },
+  "93b1d5266555dc318eb26023": {
+    "listing_id": "25c4d00c-dc0a-48e1-8cce-b75aa625e443",
+    "grade": "B",
+    "confidence": 0.9,
+    "defects": [
+      {
+        "type": "scratch",
+        "severity": "minor",
+        "location": "right earcup"
+      }
+    ],
+    "completeness": 0.61,
+    "condition_summary": "The headphones have a minor scratch on the right earcup, but are otherwise in very good condition.",
+    "functional": true,
+    "box_present": false,
+    "latency_ms": 36719,
+    "model_version": "revive-grade-v1.0",
+    "image_hash": "93b1d5266555dc318eb26023",
+    "n_dino_detections": 0,
+    "from_cache": false
+  },
+  "c45631fd48c4fa403cd21d8f": {
+    "listing_id": "86d4659c-dae5-4039-a729-3804453c6749",
+    "grade": "B",
+    "confidence": 0.9,
+    "defects": [
+      {
+        "type": "scratch",
+        "severity": "minor",
+        "location": "top-middle"
+      }
+    ],
+    "completeness": 0.651,
+    "condition_summary": "The product has a minor scratch on the top-middle area, but is otherwise in very good condition.",
+    "functional": true,
+    "box_present": false,
+    "latency_ms": 36844,
+    "model_version": "revive-grade-v1.0",
+    "image_hash": "c45631fd48c4fa403cd21d8f",
+    "n_dino_detections": 0,
+    "from_cache": false
+  },
+  "440ac4db328f5d64da8609ed": {
+    "listing_id": "d62b1ae1-55b9-43cb-8e63-692535cae206",
+    "grade": "B",
+    "confidence": 0.9,
+    "defects": [
+      {
+        "type": "scratch",
+        "severity": "minor",
+        "location": "top-left"
+      }
+    ],
+    "completeness": 0.594,
+    "condition_summary": "The product shows some minor cosmetic wear, but appears to be in very good, fully functional condition.",
+    "functional": true,
+    "box_present": false,
+    "latency_ms": 36890,
+    "model_version": "revive-grade-v1.0",
+    "image_hash": "440ac4db328f5d64da8609ed",
+    "n_dino_detections": 0,
+    "from_cache": false
+  },
+  "f7fa5c171b21b24d01dc74e2": {
+    "listing_id": "f0c269c5-7651-4717-8e3c-c5f536f2d9e5",
+    "grade": "B",
+    "confidence": 0.9,
+    "defects": [
+      {
+        "type": "scratch",
+        "severity": "minor",
+        "location": "top-right"
+      }
+    ],
+    "completeness": 0.727,
+    "condition_summary": "The wireless mouse has a minor scratch on the top-right corner, but is otherwise in very good condition and fully functional.",
+    "functional": true,
+    "box_present": false,
+    "latency_ms": 37125,
+    "model_version": "revive-grade-v1.0",
+    "image_hash": "f7fa5c171b21b24d01dc74e2",
+    "n_dino_detections": 0,
+    "from_cache": false
+  },
+  "0bb68c5dc53397703fe41cd3": {
+    "listing_id": "a944cf78-d8c5-4977-9e5c-a555d293538f",
+    "grade": "B",
+    "confidence": 0.9,
+    "defects": [
+      {
+        "type": "scratch",
+        "severity": "minor",
+        "location": "top-right"
+      }
+    ],
+    "completeness": 0.709,
+    "condition_summary": "The headphones have a minor scratch on the top-right corner, but are otherwise in very good condition and fully functional.",
+    "functional": true,
+    "box_present": false,
+    "latency_ms": 9781,
+    "model_version": "revive-grade-v1.0",
+    "image_hash": "0bb68c5dc53397703fe41cd3",
+    "n_dino_detections": 0,
+    "from_cache": false
   }
 }

@@ -216,6 +216,23 @@ const ProductDetailPage = () => {
               </div>
             )}
 
+            {listing.images && listing.images.length > 0 && !listing.is_new && (
+              <div className="mb-4">
+                <p className="text-xs font-bold text-[#0F1111] mb-1.5">Seller photos</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {listing.images.map((im, i) => (
+                    <div key={i} className="flex-shrink-0 w-20">
+                      <div className="w-20 h-20 rounded border border-[#D5D9D9] bg-white flex items-center justify-center overflow-hidden">
+                        <img src={im.url} alt={im.label} className="max-w-full max-h-full object-contain"
+                          onError={(e) => { e.target.style.display = 'none' }} />
+                      </div>
+                      <p className="text-[10px] text-gray-500 text-center mt-0.5">{im.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Delivery / Returns / Ships from / Sold by */}
             <div className="border border-[#D5D9D9] rounded divide-y divide-[#D5D9D9] mb-5 text-sm">
               <div className="flex px-3 py-2.5 gap-3">
@@ -264,6 +281,22 @@ const ProductDetailPage = () => {
                   </p>
                 )}
               </div>
+
+              {listing.buying_options && listing.buying_options.length > 1 && (
+                <div className="border border-[#D5D9D9] rounded divide-y divide-[#D5D9D9]">
+                  <p className="text-[11px] font-bold text-[#0F1111] px-2.5 py-1.5 bg-[#F7F8F8]">Buying options</p>
+                  {listing.buying_options.map((o) => (
+                    <button key={o.id} onClick={() => navigate(`/product/${o.id}`)}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 text-left hover:bg-[#F7F8F8] transition-colors ${o.id === listing.id ? 'bg-[#FFF8E7]' : ''}`}>
+                      <span className="text-xs font-semibold text-[#0F1111]">
+                        {o.is_new ? 'New' : (o.source === 'renewed' ? 'Renewed' : (o.condition_label || 'Used'))}
+                        {o.id === listing.id && <span className="text-[10px] text-[#C7511F] ml-1">• viewing</span>}
+                      </span>
+                      <span className="text-xs font-bold text-[#0F1111]">₹{parseFloat(o.price).toLocaleString('en-IN')}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <p className="text-sm">
                 <span className="text-[#007600] font-semibold">FREE Delivery</span>
@@ -397,6 +430,9 @@ const ProductDetailPage = () => {
                 </div>
                 <div className="rounded-lg overflow-y-auto overflow-x-hidden shadow-2xl" style={{ maxHeight: '82vh' }}>
                   <HealthCard
+                    source={listing.source}
+                    listing={listing}
+                    product={listing.product}
                     grade={listing.grade}
                     conditionSummary={listing.condition_summary}
                     completeness={listing.completeness}

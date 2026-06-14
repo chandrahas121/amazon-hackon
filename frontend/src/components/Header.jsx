@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, ShoppingCart, Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -7,9 +7,10 @@ import { getCredits } from "../api/client";
 
 const NAV_ITEMS = (user, navigate, close) => [
   { label: 'All',          action: () => { navigate('/'); close(); } },
-  { label: 'Shop Revive',  action: () => { navigate('/?source=p2p'); close(); }, highlight: true },
+  // v2 (point 7): only two second-life surfaces — Revive (AI-scanned seller/return
+  // items) and Renewed (Amazon authorized-center refurbished). No Warehouse/Returns.
+  { label: 'Shop Revive',  action: () => { navigate('/?source=revive'); close(); }, highlight: true },
   { label: 'Renewed',      action: () => { navigate('/?source=renewed'); close(); } },
-  { label: 'Warehouse',    action: () => { navigate('/?source=warehouse'); close(); } },
   { label: 'Sell Unused Items', action: () => { navigate('/sell'); close(); } },
   ...(user ? [{ label: 'My Listings', action: () => { navigate('/my-listings'); close(); } }] : []),
   ...(user ? [{ label: 'Green Credits', action: () => { navigate('/credits'); close(); } }] : []),
@@ -25,7 +26,7 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [credits, setCredits] = useState(null);
   const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef(null);
+  const accountRef = React.useRef(null);
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -112,7 +113,7 @@ const Header = () => {
 
         {/* Right actions */}
         <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0 text-white">
-          {/* Account */}
+          {/* Account — dropdown on click when logged in */}
           <div ref={accountRef} className="relative flex-shrink-0">
             <div
               className="cursor-pointer px-1 sm:px-2 py-1 border border-transparent hover:border-white rounded-sm transition-colors"

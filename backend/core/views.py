@@ -44,10 +44,7 @@ def _set_auth_cookies(response, refresh_token_obj):
     )
 
 
-# ─── Auth views ──────────────────────────────────────────────────────────────
-
 class RegisterView(APIView):
-    """POST /api/auth/register/"""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -64,7 +61,6 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
-    """POST /api/auth/login/"""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -80,7 +76,6 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
-    """POST /api/auth/logout/"""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -98,14 +93,11 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    """GET /api/auth/me/"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
-
-# ─── Listing views ────────────────────────────────────────────────────────────
 
 class ListingListView(APIView):
     """GET /api/listings/ — public list. POST /api/listings/ — create P2P listing (auth required)."""
@@ -116,42 +108,85 @@ class ListingListView(APIView):
         return [AllowAny()]
 
     def get(self, request):
-        qs = Listing.objects.filter(status='listed').select_related('product', 'seller')
+        qs = (Listing.objects.filter(status='listed')
+              .select_related('product', 'seller')
+              .prefetch_related('product__listings'))
 
         category = request.query_params.get('category')
         source = request.query_params.get('source')
         grade = request.query_params.get('grade')
         search = request.query_params.get('q')
+        condition = request.query_params.get('condition')
 
         if category:
             qs = qs.filter(product__category__icontains=category)
-        if source:
+        if not source:
+            qs = qs.filter(source='new')
+        elif source == 'revive':
+            qs = qs.filter(source__in=['p2p', 'return', 'warehouse'])
+        elif source == 'all':
+            pass
+        else:
             qs = qs.filter(source=source)
         if grade:
             qs = qs.filter(grade=grade)
+        if condition:
+            qs = qs.filter(condition_label__icontains=condition)
         if search:
             qs = qs.filter(product__title__icontains=search)
 
-        qs = qs.order_by('-created_at')
-        return Response({'results': ListingSerializer(qs[:40], many=True).data, 'count': qs.count()})
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+        near_geohash = request.query_params.get('near') or ''
+        if (lat and lng) or near_geohash:
+            try:
+                from ml.geohash import geohash_encode, geohash_decode
+                from ml.route import _haversine_km
+                if lat and lng:
+                    blat, blng = float(lat), float(lng)
+                else:
+                    blat, blng = geohash_decode(near_geohash)
+                listings = list(qs[:200])
+
+                def _dist(l):
+                    if not l.geohash5:
+                        return 9_999.0
+                    slat, slng = geohash_decode(l.geohash5)
+                    return _haversine_km(blat, blng, slat, slng)
+
+                listings.sort(key=_dist)
+                data = []
+                for l in listings[:40]:
+                    d = ListingSerializer(l).data
+                    d['distance_km'] = round(_dist(l), 1)
+                    data.append(d)
+                return Response({'results': data, 'count': len(listings), 'near': True})
+            except Exception as e:
+                logger.warning(f"near-me sort failed, falling back to recency: {e}")
+
+        if not source or source == 'new':
+            qs = qs.order_by('-product__rating_count', '-product__rating')
+            limit = 120
+        else:
+            qs = qs.order_by('-created_at')
+            limit = 60
+        return Response({'results': ListingSerializer(qs[:limit], many=True).data, 'count': qs.count()})
 
     def post(self, request):
         serializer = CreateListingSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        # Read bytes first so grade_image() can run before/after storage save
         image_bytes = None
         image_url = ''
         image_file = request.FILES.get('image')
         if image_file:
             image_bytes = image_file.read()
-            image_file.seek(0)  # reset so default_storage can read it again
+            image_file.seek(0)
             filename = f"listings/{uuid.uuid4().hex}_{image_file.name}"
             path = default_storage.save(filename, image_file)
             image_url = request.build_absolute_uri(settings.MEDIA_URL + path)
 
-        # AI grading — runs synchronously, falls back gracefully
         grade_result = {
             'grade': 'B',
             'condition_summary': data.get('condition_summary', ''),
@@ -160,7 +195,14 @@ class ListingListView(APIView):
             'defects': [],
             'from_cache': False,
         }
-        if image_bytes:
+        grade_override = request.data.get('grade_override')
+        if grade_override in ('A', 'B', 'C', 'D', 'E', 'F'):
+            grade_result['grade'] = grade_override
+            try:
+                grade_result['completeness'] = float(request.data.get('completeness_override', 1.0))
+            except (TypeError, ValueError):
+                pass
+        elif image_bytes:
             try:
                 from ml.grade import grade_image
                 grade_result = grade_image(
@@ -174,7 +216,6 @@ class ListingListView(APIView):
             except Exception as e:
                 logger.warning(f"grade_image() failed, using defaults: {e}")
 
-        # If user wrote their own condition notes, prefer them; else use AI summary
         condition_summary = (
             data.get('condition_summary') or
             grade_result.get('condition_summary', '')
@@ -182,6 +223,18 @@ class ListingListView(APIView):
 
         mrp_val = data.get('mrp') or (data['price'] * Decimal('2'))
         geohash5 = data.get('geohash5', '') or (request.user.geohash5 if request.user else '')
+        lat, lng = data.get('lat'), data.get('lng')
+        if not geohash5 and lat is not None and lng is not None:
+            try:
+                from ml.geohash import geohash_encode
+                geohash5 = geohash_encode(float(lat), float(lng), 5)
+            except Exception as e:
+                logger.warning(f"geohash_encode failed: {e}")
+        if request.user and lat is not None and lng is not None:
+            request.user.lat, request.user.lng = float(lat), float(lng)
+            if geohash5:
+                request.user.geohash5 = geohash5
+            request.user.save(update_fields=['lat', 'lng', 'geohash5'])
 
         product = Product.objects.create(
             asin=f'P2P-{uuid.uuid4().hex[:8].upper()}',
@@ -192,7 +245,15 @@ class ListingListView(APIView):
             description=data.get('description', ''),
         )
 
-        # Stage 1: create listing with grade, then run routing
+        # v2: persist the seller's uploaded angle shots on the listing for the Revive card
+        listing_images = []
+        if image_url:
+            listing_images.append({'url': image_url, 'label': 'Main'})
+        extra = request.data.getlist('photos') if hasattr(request.data, 'getlist') else []
+        for u in extra:
+            if u:
+                listing_images.append({'url': u, 'label': 'Angle'})
+
         listing = Listing.objects.create(
             product=product,
             source=Listing.Source.P2P,
@@ -204,9 +265,9 @@ class ListingListView(APIView):
             status=Listing.Status.LISTED,
             seller=request.user,
             image_url=image_url,
+            images=listing_images,
         )
 
-        # Stage 2: smart routing — persist chosen_path / tier / ev_data on the listing
         route_result = {}
         try:
             from ml.route import route_item
@@ -221,7 +282,9 @@ class ListingListView(APIView):
             listing.chosen_path = route_result.get('chosen_path', '')
             listing.tier = route_result.get('tier', 1)
             listing.ev_data = route_result.get('ev_breakdown', {})
-            # If route says sell price differs, update listing price
+            listing.risk_tier = route_result.get('risk_tier') or ''
+            listing.disposition = route_result.get('disposition') or ''
+            listing.condition_label = route_result.get('condition_label') or ''
             routed_price = route_result.get('price')
             if routed_price and routed_price > 0:
                 listing.price = Decimal(str(routed_price))
@@ -244,7 +307,6 @@ class ListingListView(APIView):
 
 
 class ListingDetailView(APIView):
-    """GET /api/listings/<pk>/"""
     permission_classes = [AllowAny]
 
     def get(self, request, pk):
@@ -252,18 +314,16 @@ class ListingDetailView(APIView):
             listing = Listing.objects.select_related('product', 'seller').get(pk=pk)
         except Listing.DoesNotExist:
             return Response({'error': 'Listing not found.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(ListingSerializer(listing).data)
+        data = ListingSerializer(listing).data
+        siblings = (Listing.objects.filter(product_id=listing.product_id, status='listed')
+                    .select_related('product', 'seller'))
+        order = {'new': 0, 'renewed': 1}
+        opts = sorted(siblings, key=lambda l: (order.get(l.source, 2), float(l.price)))
+        data['buying_options'] = ListingSerializer(opts, many=True).data
+        return Response(data)
 
 
 class RecommendView(APIView):
-    """
-    GET /api/recommend/?n=8  — "Certified Refurbished For You" rail (Pillar 5).
-
-    Hybrid intent: ALS + CLIP + grade + proximity. The Django venv has no
-    numpy/torch, so this is the numpy-free ranker: grade boost + proximity
-    (same geohash region) + source preference (Renewed/P2P) over A/B-grade
-    second-life listings. Cold-start safe — needs zero interaction history.
-    """
     permission_classes = [AllowAny]
 
     _GRADE_BOOST = {'A': 1.0, 'B': 0.8, 'C': 0.4, 'D': 0.0}
@@ -308,7 +368,6 @@ class RecommendView(APIView):
 
 
 class MyListingsView(APIView):
-    """GET /api/listings/mine/ — all listings created by the logged-in seller."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -321,10 +380,71 @@ class MyListingsView(APIView):
         return Response({'results': ListingSerializer(qs, many=True).data, 'count': qs.count()})
 
 
-# ─── Order views ──────────────────────────────────────────────────────────────
+class CatalogSuggestView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        q = (request.query_params.get('q') or '').strip()
+        category = request.query_params.get('category') or ''
+        grade = request.query_params.get('grade') or 'B'
+        if len(q) < 3:
+            return Response({'results': []})
+
+        qs = Product.objects.all()
+        if category:
+            qs = qs.filter(category__icontains=category)
+        qs = qs.filter(title__icontains=q)[:8]
+
+        try:
+            from ml.route import _predict_price
+        except Exception:
+            _predict_price = None
+
+        results = []
+        for p in qs:
+            mrp = float(p.mrp)
+            suggested = (_predict_price(grade, p.category, mrp) if _predict_price
+                         else round(mrp * 0.5, 2))
+            results.append({
+                'asin': p.asin, 'title': p.title, 'brand': p.brand,
+                'category': p.category, 'mrp': mrp,
+                'image': p.reference_image_url,
+                'rating': p.rating, 'rating_count': p.rating_count,
+                'suggested_price': round(float(suggested), 2),
+                'price_band': [round(float(suggested) * 0.85, 2), round(float(suggested) * 1.15, 2)],
+            })
+        return Response({'results': results})
+
+
+class ManageListingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    _ALLOWED = {
+        'delist': Listing.Status.DELISTED,
+        'pause':  Listing.Status.PAUSED,
+        'relist': Listing.Status.LISTED,
+    }
+
+    def post(self, request, pk):
+        action = (request.data.get('action') or '').lower()
+        if action not in self._ALLOWED:
+            return Response({'error': "action must be one of: delist, pause, relist"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            listing = Listing.objects.get(pk=pk, seller=request.user)
+        except Listing.DoesNotExist:
+            return Response({'error': 'Listing not found or not yours.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        if listing.status == Listing.Status.SOLD:
+            return Response({'error': 'Sold items cannot be changed.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        listing.status = self._ALLOWED[action]
+        listing.save(update_fields=['status', 'updated_at'])
+        return Response({'id': listing.pk, 'status': listing.status,
+                         'message': f'Listing {action}ed.'})
+
 
 class OrderListCreateView(APIView):
-    """GET /api/orders/ — user's orders. POST /api/orders/ — place an order."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -345,7 +465,6 @@ class OrderListCreateView(APIView):
         except Listing.DoesNotExist:
             return Response({'error': 'Listing not available.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Optional chosen size (clothing) — feeds the buyer's fit_size_profile.
         size = request.data.get('size')
         try:
             size = float(size) if size is not None else None
@@ -363,7 +482,6 @@ class OrderListCreateView(APIView):
         listing.status = Listing.Status.SOLD
         listing.save()
 
-        # Refresh the size profile from kept orders (no measurements needed).
         try:
             from prevent.fit_profile import update_fit_size_profile
             update_fit_size_profile(request.user)

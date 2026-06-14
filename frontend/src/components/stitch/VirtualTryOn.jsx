@@ -174,6 +174,7 @@ const VirtualTryOn = ({ garmentImage, garmentTitle, price, mrp, grade, gradeLabe
     try {
       const formData = new FormData();
       formData.append("person_image", personFile);
+      // Pass the garment as a URL — backend will fetch it
       formData.append("garment_image_url", garmentImage);
       formData.append("garment_description", garmentTitle || "clothing item");
 
