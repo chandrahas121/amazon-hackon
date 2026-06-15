@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
-from .fit_profile import resolve_category, update_fit_size_profile
+from .fit_profile import resolve_category, update_fit_size_profile, brand_bias
 
 logger = logging.getLogger(__name__)
 
@@ -122,17 +122,22 @@ class FitTwinView(APIView):
         user_profile = _user_profile(request)
 
         available_sizes = data.get("available_sizes") or None
+        size_system = data.get("size_system") or "numeric"
 
         try:
             from ml.fittwin.match import find_fit_twins
             result = find_fit_twins(
                 item_id=item_id, category=fit_category,
                 user_size=user_size, user_profile=user_profile,
-                available_sizes=available_sizes,
+                available_sizes=available_sizes, size_system=size_system,
                 k=int(data.get("k", 25)),
             )
         except Exception as e:
             logger.warning("find_fit_twins() failed: %s", e)
             result = {"available": False, "reason": "error", "nudge": "",
                       "twins_found": 0, "twins": []}
+
+        bb = brand_bias(data.get("brand"))
+        if bb and isinstance(result, dict):
+            result["brand_bias"] = bb
         return Response(result)

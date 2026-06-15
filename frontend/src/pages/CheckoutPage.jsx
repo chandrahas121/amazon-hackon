@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import GreenCredits from '../components/stitch/GreenCredits'
@@ -14,8 +14,21 @@ const CheckoutPage = () => {
   const [placing, setPlacing] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [dismissedSizeNudge, setDismissedSizeNudge] = useState(false)
 
   const finalTotal = Math.max(0, cartTotal - redeemedCredits * 0.1)
+
+  // Products the shopper has added in MORE THAN ONE size — a classic "size hedge"
+  // that drives returns. We nudge them to the product's fit guide instead.
+  const multiSizeProducts = useMemo(() => {
+    const byProduct = {}
+    for (const it of cart) {
+      const key = it.title || it.id
+      if (!byProduct[key]) byProduct[key] = { title: it.title, sizes: new Set(), linkId: it.id }
+      if (it.size != null && it.size !== '') byProduct[key].sizes.add(String(it.size))
+    }
+    return Object.values(byProduct).filter((g) => g.sizes.size >= 2)
+  }, [cart])
 
   const handlePlaceOrder = async () => {
     if (!user) { navigate('/login'); return }
@@ -80,18 +93,31 @@ const CheckoutPage = () => {
                   </h2>
                 </div>
 
-                {/* Return prevention nudge — Pillar 4 */}
-                <div className="px-3 sm:px-4 py-2.5 bg-[#FFFBF0] border-b border-amber-100 flex items-start gap-2.5">
-                  <div className="flex-grow min-w-0">
-                    <p className="text-xs font-semibold text-[#0F1111]">
-                      Customers with your profile kept <strong>size 8</strong> in this brand — size 9 was returned 3× more.
-                    </p>
-                    <p className="text-[11px] text-amber-700 mt-0.5">AI fit intelligence · Pillar 4 – Return Prevention</p>
+                {/* Return prevention nudge — Pillar 4: shown only when the shopper
+                    has added the same product in more than one size. */}
+                {multiSizeProducts.length > 0 && !dismissedSizeNudge && (
+                  <div className="px-3 sm:px-4 py-2.5 bg-[#FFFBF0] border-b border-amber-100 flex items-start gap-2.5">
+                    <div className="flex-grow min-w-0">
+                      <p className="text-xs font-semibold text-[#0F1111]">
+                        We noticed you've added multiple sizes of{' '}
+                        <strong>{multiSizeProducts[0].title}</strong>
+                        {multiSizeProducts.length > 1 ? ' (and other items)' : ''}. Unsure which to keep?
+                      </p>
+                      <button
+                        onClick={() => navigate(`/product/${multiSizeProducts[0].linkId}`)}
+                        className="text-[11px] font-semibold text-[#007185] hover:underline mt-0.5"
+                      >
+                        See the best size for you on the product page →
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setDismissedSizeNudge(true)}
+                      className="flex-shrink-0 text-[11px] font-semibold text-[#007185] hover:underline whitespace-nowrap mt-0.5"
+                    >
+                      Dismiss
+                    </button>
                   </div>
-                  <button className="flex-shrink-0 text-[11px] font-semibold text-[#007185] hover:underline whitespace-nowrap mt-0.5">
-                    Dismiss
-                  </button>
-                </div>
+                )}
 
                 {cart.map((item) => (
                   <div key={item.id} className="flex gap-3 sm:gap-4 p-3 sm:p-4">

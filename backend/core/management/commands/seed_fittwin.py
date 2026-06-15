@@ -28,6 +28,7 @@ from decimal import Decimal
 from pathlib import Path
 import sys
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -99,6 +100,12 @@ class Command(BaseCommand):
 
         self._seed_products(rows, opts["products_per_category"])
         self._seed_users(rows, opts["users"], opts["password"])
+
+        # Give the rest of the clothing catalogue its own real fit items so every
+        # product has item-specific Fit-Twin data (not the same category fallback).
+        self.stdout.write("Assigning fit items to remaining clothing products …")
+        call_command("assign_fit_items")
+
         self.stdout.write(self.style.SUCCESS("Fit-Twin demo seed complete."))
 
     # ── demo storefront products linked to real dataset items ────────────────

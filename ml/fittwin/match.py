@@ -37,6 +37,7 @@ MIN_SIZE_SUPPORT = 3    # a size needs this many reviews to report a per-size ra
 # they buy and keep across categories line up with yours. No body data required.
 MIN_OVERLAP = 2         # shared categories needed to call someone a behavioral twin
 MAX_TWIN_USERS = 80     # keep the N closest twins who reviewed this item/category
+MIN_CONFIDENT_TWINS = 8 # below this, show the item review summary instead of "people like you"
 
 _index = None
 _loaded = False
@@ -184,6 +185,45 @@ def _fmt(sz):
     return int(sz) if float(sz).is_integer() else round(float(sz), 1)
 
 
+# ── Letter sizing (S–XXL) ─────────────────────────────────────────────────────
+# The fit dataset is women's numeric sizes. For menswear we band those numbers
+# into unisex letter sizes so the advice reads sensibly ("best in M") instead of
+# a raw women's dress number. The recommendation stays grounded in real fit data.
+LETTER_ORDER = ["S", "M", "L", "XL", "XXL"]
+
+
+def _size_to_letter(sz) -> str:
+    s = float(sz)
+    if s <= 4:
+        return "S"
+    if s <= 8:
+        return "M"
+    if s <= 12:
+        return "L"
+    if s <= 16:
+        return "XL"
+    return "XXL"
+
+
+def _best_letter(base):
+    """Best-fitting letter band (highest true-fit rate, tie-break by support) plus
+    an honest verdict for that band."""
+    letters = base["size"].map(_size_to_letter)
+    best, best_key, best_verdict = None, (-1.0, -1), None
+    for letter in LETTER_ORDER:
+        grp = base[letters == letter]
+        if len(grp) < MIN_SIZE_SUPPORT:
+            continue
+        key = (float((grp["fit"] == "fit").mean()), len(grp))
+        if key > best_key:
+            best, best_key, best_verdict = letter, key, _verdict(grp)
+    if best is None:
+        good = base[base["fit"] == "fit"]
+        if len(good):
+            best = _size_to_letter(good["size"].median())
+    return best, best_verdict
+
+
 def find_fit_twins(
     *,
     item_id: Optional[str] = None,
@@ -191,6 +231,7 @@ def find_fit_twins(
     user_size: Optional[float] = None,
     user_profile: Optional[Dict[str, float]] = None,
     available_sizes: Optional[List[float]] = None,
+    size_system: str = "numeric",        # "numeric" | "letter" (menswear S–XXL)
     k: int = 25,
 ) -> Dict[str, Any]:
     idx = _load()
@@ -207,11 +248,18 @@ def find_fit_twins(
     # Only reason about sizes the storefront actually sells, so we never recommend
     # (or chart) a size the shopper can't buy. Skip the filter if it would leave
     # too little real data to be meaningful.
-    if available_sizes:
+    if available_sizes and size_system != "letter":
         avail = {float(s) for s in available_sizes}
         restricted = cohort[cohort["size"].isin(avail)]
         if len(restricted) >= MIN_SIZE_SUPPORT:
             cohort = restricted
+
+    # The item/style review base (everyone, before narrowing to twins) — used for
+    # the "review summary" fallback when there aren't enough similar shoppers.
+    review_base = cohort
+    n_reviews = int(len(review_base))
+    _rating = review_base["rating"].dropna()
+    avg_rating = round(float(_rating.mean()), 1) if len(_rating) else None
 
     # Narrow to behavioral twins — shoppers whose kept-size pattern matches yours —
     # when we have enough of them. Everything below is then computed over "people
@@ -224,33 +272,65 @@ def find_fit_twins(
     else:
         base, twin_mode, twin_users = cohort, "crowd", 0
 
+    # We only claim "people like you" when there are genuinely enough twins;
+    # otherwise the UI shows the item's overall review summary instead.
+    twin_confident = twin_mode == "body" and twin_users >= MIN_CONFIDENT_TWINS
+
     direction = _direction(base)
-    stats = _size_stats(base)
-    rec_size = _best_size(base, stats)
 
-    selected = float(user_size) if user_size is not None else None
+    if size_system == "letter":
+        # Menswear: recommend a letter band from the real fit outcomes.
+        rec_out, rec_verdict = _best_letter(base)
+        selected_out = selected_verdict = None
+        rate = float((base["fit"] == "fit").mean())
+        n, basis = int(len(base)), "overall"
+        good_fit_pct, n_fit = round(100 * rate), round(rate * len(base))
+        matches_pick = False
+        nudge = ""
+    else:
+        stats = _size_stats(base)
+        rec_size = _best_size(base, stats)
+        rec_out = _fmt(rec_size)
 
-    # Percentage basis: the selected size if we have data for it, else overall.
-    if selected is not None and selected in stats:
-        rate, n = stats[selected]
-        basis = "size"
-    elif selected is not None:
-        near = base[(base["size"] - selected).abs() <= 1]
-        if len(near) >= MIN_SIZE_SUPPORT:
-            rate, n, basis = float((near["fit"] == "fit").mean()), int(len(near)), "near"
+        selected = float(user_size) if user_size is not None else None
+        selected_out = _fmt(selected)
+
+        # A plain-language verdict for the size the shopper is looking at (no numbers).
+        selected_verdict = None
+        if selected is not None:
+            grp = base[base["size"] == selected]
+            if len(grp) >= MIN_SIZE_SUPPORT:
+                selected_verdict = _verdict(grp)
+
+        # Is the recommended size actually a majority true-fit, or just the best of a
+        # mediocre bunch? Lets the UI say "a true fit" only when that's honest.
+        rec_verdict = None
+        if rec_size is not None:
+            grp = base[base["size"] == rec_size]
+            if len(grp) >= MIN_SIZE_SUPPORT:
+                rec_verdict = _verdict(grp)
+
+        # Percentage basis: the selected size if we have data for it, else overall.
+        if selected is not None and selected in stats:
+            rate, n = stats[selected]
+            basis = "size"
+        elif selected is not None:
+            near = base[(base["size"] - selected).abs() <= 1]
+            if len(near) >= MIN_SIZE_SUPPORT:
+                rate, n, basis = float((near["fit"] == "fit").mean()), int(len(near)), "near"
+            else:
+                rate, n, basis = float((base["fit"] == "fit").mean()), int(len(base)), "overall"
         else:
             rate, n, basis = float((base["fit"] == "fit").mean()), int(len(base)), "overall"
-    else:
-        rate, n, basis = float((base["fit"] == "fit").mean()), int(len(base)), "overall"
 
-    good_fit_pct = round(100 * rate)
-    n_fit = round(rate * n)
+        good_fit_pct = round(100 * rate)
+        n_fit = round(rate * n)
 
-    matches_pick = (selected is not None and rec_size is not None
-                    and abs(selected - rec_size) < 0.5)
+        matches_pick = (selected is not None and rec_size is not None
+                        and abs(selected - rec_size) < 0.5)
 
-    nudge = _nudge(scope, good_fit_pct, n, selected, rec_size, direction, basis,
-                   matches_pick, twin_mode)
+        nudge = _nudge(scope, good_fit_pct, n, selected, rec_size, direction, basis,
+                       matches_pick, twin_mode)
 
     return {
         "available": True,
@@ -258,14 +338,19 @@ def find_fit_twins(
         "basis": basis,                          # size | near | overall
         "twin_mode": twin_mode,                  # body (people like you) | crowd
         "twin_users": twin_users,                # distinct behavioral twins used
-        "selected_size": _fmt(selected),
+        "twin_confident": bool(twin_confident),  # enough twins to say "people like you"
+        "selected_verdict": selected_verdict,    # fit | small | large | None (plain language)
+        "recommended_verdict": rec_verdict,      # is the best size a real majority true-fit?
+        "n_reviews": n_reviews,                  # reviews behind the item summary
+        "avg_rating": avg_rating,                # mean rating /10 for the item summary
+        "selected_size": selected_out,
         # "personalised" = the headline is tailored to this shopper, either because
         # it's drawn from behavioral twins or it's specific to the size they picked.
         "personalised": twin_mode == "body" or basis in ("size", "near"),
         "twins_found": int(n),
         "good_fit": int(n_fit),
         "good_fit_pct": good_fit_pct,
-        "recommended_size": _fmt(rec_size),      # stable, data-driven
+        "recommended_size": rec_out,             # stable, data-driven (number or S–XXL)
         "matches_pick": bool(matches_pick),
         "direction": direction,                  # runs_small | runs_large | true_to_size
         "nudge": nudge,

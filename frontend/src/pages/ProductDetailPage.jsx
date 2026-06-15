@@ -43,7 +43,7 @@ const ProductDetailPage = () => {
   const [notFound, setNotFound] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedSize, setSelectedSize] = useState(null)
-  const SIZES = [2, 4, 6, 8, 10, 12, 14, 16]
+  const SIZES = ['S', 'M', 'L', 'XL', 'XXL']
   const [showHealthCard, setShowHealthCard] = useState(false)
   const [cardData, setCardData] = useState(null)
   const [cardLoading, setCardLoading] = useState(false)
@@ -280,7 +280,7 @@ const ProductDetailPage = () => {
                       <button
                         key={sz}
                         onClick={() => setSelectedSize(sz)}
-                        className={`w-9 h-9 rounded border text-xs font-semibold transition-colors
+                        className={`min-w-9 h-9 px-2.5 rounded border text-xs font-semibold transition-colors
                           ${selectedSize === sz
                             ? 'bg-[#131921] text-white border-[#131921]'
                             : 'bg-white text-[#0F1111] border-[#D5D9D9] hover:border-[#131921]'}`}
@@ -345,8 +345,10 @@ const ProductDetailPage = () => {
                 <FitTwin
                   category={product.category}
                   itemId={product.fit_item_id}
+                  brand={product.brand}
                   size={selectedSize}
                   availableSizes={SIZES}
+                  sizeSystem="letter"
                 />
               )}
 

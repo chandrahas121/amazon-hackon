@@ -3,14 +3,15 @@ import api from '../../api/client';
 
 /**
  * Pillar 4 — Fit-Twin (measurement-free).
- * Shows how an item really fit other shoppers and recommends a size, without
- * asking for height/weight. Personalised by the shopper's usual size when known
- * (from their order history); otherwise shows the item's aggregate fit signal.
+ * Tells the shopper in plain language how an item fit people like them and which
+ * size to get — no height/weight asked. When there aren't enough similar shoppers
+ * it falls back to the item's review summary. Also shows known brand sizing bias.
  *
  * Props:
  *   category : catalogue category (e.g. "dress", "clothing")
  *   itemId   : optional dataset item id (Product.fit_item_id) for item-level match
- *   size     : optional — a size the shopper is choosing (overrides their profile)
+ *   brand    : optional brand name (for the brand sizing-bias line)
+ *   size     : optional — a size the shopper is choosing
  *   onTryOn  : optional callback to launch virtual try-on
  */
 const DIRECTION = {
@@ -19,10 +20,15 @@ const DIRECTION = {
   true_to_size: { label: 'True to size', cls: 'bg-green-100 text-green-700' },
 };
 
-const fitDot = (fit) =>
-  fit === 'fit' ? 'bg-green-500' : fit === 'small' ? 'bg-orange-400' : 'bg-purple-400';
+// Tendency phrasing — describes the item's sizing skew, NOT a majority claim
+// ("true to size" here means no strong lean to small/large, not ">50% perfect").
+const TENDENCY = {
+  runs_small: 'tends to run small',
+  runs_large: 'tends to run large',
+  true_to_size: 'fits true to size',
+};
 
-const FitTwin = ({ category, itemId, size, availableSizes, onTryOn }) => {
+const FitTwin = ({ category, itemId, brand, size, availableSizes, sizeSystem, onTryOn }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,8 +42,9 @@ const FitTwin = ({ category, itemId, size, availableSizes, onTryOn }) => {
       .post('/api/prevent/fit-twin/', {
         category,
         item_id: itemId || undefined,
-        size,
+        brand: brand || undefined,
         available_sizes: availableSizes || undefined,
+        size_system: sizeSystem || undefined,
       })
       .then((res) => alive && setData(res.data))
       .catch(() => alive && setData(null))
@@ -45,7 +52,9 @@ const FitTwin = ({ category, itemId, size, availableSizes, onTryOn }) => {
     return () => {
       alive = false;
     };
-  }, [category, itemId, size, sizesKey]);
+    // Intentionally NOT keyed on `size`: the recommendation is the same whichever
+    // size the shopper clicks, so the card stays stable and never re-fetches.
+  }, [category, itemId, brand, sizesKey]);
 
   if (loading) {
     return <div className="mt-3 h-20 rounded-lg bg-gray-50 border border-gray-100 animate-pulse" />;
@@ -53,89 +62,69 @@ const FitTwin = ({ category, itemId, size, availableSizes, onTryOn }) => {
   if (!data || !data.available) return null;
 
   const dir = DIRECTION[data.direction] || DIRECTION.true_to_size;
-  const sel = data.selected_size;          // the size the shopper picked (or null)
-  const rec = data.recommended_size;       // stable, data-driven best fit
-  const body = data.twin_mode === 'body';  // drawn from shoppers who size like you
-  const who = body ? 'shoppers who size like you' : 'shoppers';
+  const rec = data.recommended_size;          // stable, data-driven best fit
+  // does the shopper's currently-picked size match the recommendation? (client-side,
+  // so the badge updates instantly without re-fetching or changing the headline)
+  const matchesPick = size != null && rec != null && String(size) === String(rec);
 
-  // headline subtext mirrors exactly what the percentage is measured over,
-  // so we never claim "shoppers who bought size N" when it's really an overall rate.
-  const subtext = data.basis === 'size'
-    ? <>of {data.twins_found} {who} who bought <span className="font-medium">size {sel}</span> found it a <span className="font-medium">true fit</span>.</>
-    : data.basis === 'near'
-      ? <>of {data.twins_found} {who} who bought <span className="font-medium">around size {sel}</span> found it a <span className="font-medium">true fit</span>.</>
-      : body
-        ? <>of {data.twins_found} shoppers who <span className="font-medium">size like you</span> found this <span className="font-medium">true to size</span>.</>
-        : <>of {data.twins_found} buyers found this <span className="font-medium">true to size</span>{data.scope === 'item' ? '' : ' in similar pieces'}.</>;
-
-  const title = body
-    ? 'How this fits people like you'
-    : (data.personalised ? `How size ${sel} fits` : 'How this fits');
+  // Stable, size-independent message, always framed as "shoppers similar to you".
+  const who = 'Shoppers similar to you';
+  let headline;
+  if (rec != null) {
+    headline = data.recommended_verdict === 'fit'
+      ? <>{who} found <span className="font-medium">size {rec} a true fit</span>.</>
+      : <>{who} fit best in <span className="font-medium">size {rec}</span>.</>;
+  } else {
+    headline = <>{who} found this <span className="font-medium">{TENDENCY[data.direction]}</span>.</>;
+  }
 
   return (
     <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-base">📐</span>
-          <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+          <svg className="w-4 h-4 text-[#007185]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z" />
+            <path d="m7.5 10.5 2 2M11 7l2 2M14.5 3.5l2 2" />
+          </svg>
+          <h4 className="text-sm font-semibold text-gray-900">How this fits</h4>
         </div>
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${dir.cls}`}>
           {dir.label}
         </span>
       </div>
 
-      {/* headline */}
-      <div className="mt-2 flex items-end gap-3">
-        <div className="text-3xl font-bold text-gray-900 leading-none">{data.good_fit_pct}%</div>
-        <p className="text-xs text-gray-600 pb-0.5">{subtext}</p>
-      </div>
+      {/* plain-language verdict / review summary */}
+      <p className="mt-2 text-sm text-gray-700 leading-snug">{headline}</p>
 
-      {/* recommended size — stable, data-driven; flagged when it differs from the pick */}
+      {/* recommended size */}
       {rec != null && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500">Best-fitting size:</span>
+          <span className="text-xs text-gray-500">Best size for you:</span>
           <span className="text-sm font-semibold text-white bg-[#007185] rounded-md px-2.5 py-1">
             Size {rec}
           </span>
-          {size != null && !data.matches_pick && (
-            <span className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-2 py-0.5">
-              you picked size {size}
+          {matchesPick && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-md px-2 py-0.5">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+              that's your pick
             </span>
           )}
-          {size != null && data.matches_pick && (
-            <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-md px-2 py-0.5">
-              that's your pick ✓
+          {size != null && !matchesPick && (
+            <span className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-2 py-0.5">
+              you picked size {size}
             </span>
           )}
         </div>
       )}
 
-      {/* size-twin chips */}
-      {data.twins?.length > 0 && (
-        <div className="mt-3">
-          <div className="flex flex-wrap gap-1.5">
-            {data.twins.map((t, i) => (
-              <span
-                key={i}
-                title={`size ${t.size}: ${t.fit_pct ?? ''}% true fit · ${t.count} shoppers`}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] text-gray-700"
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${fitDot(t.fit)}`} />
-                Size {t.size}
-              </span>
-            ))}
-          </div>
-          <div className="mt-2 flex gap-3 text-[10px] text-gray-400">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> true fit
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> ran small
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> ran large
-            </span>
-          </div>
+      {/* brand sizing bias */}
+      {data.brand_bias && (
+        <div className="mt-3 flex items-start gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-2">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 7v5.5a2 2 0 0 0 .6 1.4l7.5 7.5a2 2 0 0 0 2.8 0l4.5-4.5a2 2 0 0 0 0-2.8L11 6.6a2 2 0 0 0-1.4-.6H4a1 1 0 0 0-1 1Z" />
+            <circle cx="7.5" cy="10.5" r="1.2" />
+          </svg>
+          <span>{data.brand_bias.label}</span>
         </div>
       )}
 

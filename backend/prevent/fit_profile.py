@@ -21,6 +21,36 @@ CATEGORY_TO_FIT = {
 _EXCLUDED_STATES = {"returned", "cancelled", "pending"}
 
 
+# The clothing-fit dataset has no brand field, so brand sizing tendencies are
+# curated from well-known real-world sizing behaviour (demo scope). Direction is
+# one of: runs_small | runs_large | true_to_size.
+BRAND_BIAS = {
+    "zara":          ("runs_small",   "Zara tends to run small — many shoppers size up."),
+    "h&m":           ("runs_small",   "H&M tends to run small — consider sizing up."),
+    "nike":          ("runs_small",   "Nike's athletic cut runs small — size up for comfort."),
+    "us polo assn.": ("runs_large",   "U.S. Polo Assn. tends to run large — consider sizing down."),
+    "adidas":        ("true_to_size", "Adidas generally fits true to size."),
+    "puma":          ("true_to_size", "Puma generally fits true to size."),
+    "levi's":        ("true_to_size", "Levi's denim fits true to size."),
+    "wrangler":      ("true_to_size", "Wrangler fits true to size."),
+    "allen solly":   ("true_to_size", "Allen Solly fits true to size."),
+    "peter england": ("true_to_size", "Peter England fits true to size."),
+    "arrow":         ("true_to_size", "Arrow fits true to size."),
+    "studio revive": ("true_to_size", "Studio Revive is designed to fit true to size."),
+}
+
+
+def brand_bias(brand):
+    """Curated sizing tendency for a known brand, or None if we don't track it."""
+    if not brand:
+        return None
+    hit = BRAND_BIAS.get(brand.strip().lower())
+    if not hit:
+        return None
+    direction, label = hit
+    return {"brand": brand, "direction": direction, "label": label}
+
+
 def resolve_category(raw):
     raw = (raw or "").strip().lower()
     return CATEGORY_TO_FIT.get(raw, raw or None)
