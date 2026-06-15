@@ -117,7 +117,7 @@ const ReviveHealthCard = ({ grade, conditionSummary, completeness, sellerName, p
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-baseline gap-1.5">
               <span className="text-[#131921] font-black text-sm tracking-tight">amazon</span>
-              <span className="text-[#131921]/40 text-[9px] font-bold tracking-[2px] uppercase">revive</span>
+              <span className="text-[#FF9900] text-[9px] font-bold tracking-[2px] uppercase">revive</span>
             </div>
             <button onClick={() => setQrOpen(true)} className="rounded overflow-hidden border border-[#D5D9D9] hover:border-[#131921] transition-colors cursor-pointer" title="Tap to enlarge QR"><QRSvg size={36} /></button>
           </div>

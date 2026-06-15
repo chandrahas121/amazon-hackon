@@ -262,7 +262,7 @@ const VirtualTryOn = ({ garmentImage, garmentTitle, price, mrp, grade, gradeLabe
             </div>
 
             {/* ── Left: product panel (navy) ── */}
-            <div className="flex flex-shrink-0 items-center gap-3 bg-[#1F2A38] p-3 sm:w-[240px] sm:flex-col sm:items-stretch sm:gap-0 sm:p-5">
+            <div className="flex flex-shrink-0 items-center gap-3 bg-[#1F2A38] p-3 sm:w-[240px] sm:flex-col sm:items-stretch sm:gap-0 sm:p-5 sm:overflow-y-auto">
               {/* Desktop header inside panel */}
               <div className="hidden items-center justify-between sm:mb-5 sm:flex">
                 <div className="flex items-center gap-2">
