@@ -170,14 +170,6 @@ const CheckoutPage = () => {
                             +
                           </button>
                         </div>
-                        <span className="mx-2 text-gray-300">|</span>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-[#007185] hover:underline hover:text-[#c45500] text-xs"
-                        >
-                          Delete
-                        </button>
-                        {isUnique && <span className="text-[10px] text-amber-600 ml-2">One-of-a-kind</span>}
                       </div>
                     </div>
                   </div>

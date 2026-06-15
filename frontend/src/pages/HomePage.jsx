@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Recycle, CheckCircle, Smartphone, Shirt, Armchair, IndianRupee, Sparkles } from 'lucide-react'
 import Header from '../components/Header'
 import Banner, { TrustStrip } from '../components/Banner'
 import ProductFeed from '../components/ProductFeed'
@@ -16,6 +17,48 @@ const GRADE_PILL = {
   C: 'bg-orange-100 text-orange-800', D: 'bg-red-100 text-red-800',
 }
 
+// ── Category quick-nav tiles ──
+// Pure UI/navigation shortcuts layered on top of the existing search/source
+// filter params already used by HomePage + ProductFeed (no new data flow).
+const CATEGORY_TILES = [
+  { label: 'Shop Revive', sub: 'AI-graded second-life', icon: <Recycle className="w-5 h-5 text-[#007185]" />, source: 'revive' },
+  { label: 'Amazon Renewed', sub: 'Certified refurbished', icon: <CheckCircle className="w-5 h-5 text-[#007185]" />, source: 'renewed' },
+  { label: 'Electronics', sub: 'Phones, laptops & more', icon: <Smartphone className="w-5 h-5 text-[#007185]" />, q: 'Electronics' },
+  { label: 'Fashion', sub: 'Pre-loved styles', icon: <Shirt className="w-5 h-5 text-[#007185]" />, q: 'Fashion' },
+  { label: 'Home & Garden', sub: 'Furnish for less', icon: <Armchair className="w-5 h-5 text-[#007185]" />, q: 'Home' },
+  { label: 'Sell Unused Items', sub: 'Earn from your closet', icon: <IndianRupee className="w-5 h-5 text-[#007185]" />, link: '/sell' },
+]
+
+const CategoryNav = () => {
+  const navigate = useNavigate()
+  const goTo = (tile) => {
+    if (tile.link) return navigate(tile.link)
+    if (tile.source) return navigate(`/?source=${tile.source}`)
+    return navigate(`/?q=${encodeURIComponent(tile.q)}`)
+  }
+  return (
+    <div className="px-3 sm:px-4 mt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {CATEGORY_TILES.map((c) => (
+          <button
+            key={c.label}
+            onClick={() => goTo(c)}
+            className="bg-white border border-[#D5D9D9] rounded-lg px-4 py-3 flex items-center gap-3 hover:shadow-md transition-shadow text-left"
+          >
+            <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-[#F0F2F2] rounded-full">
+              {c.icon}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-[#0F1111] leading-tight">{c.label}</span>
+              <span className="block text-xs text-gray-500 leading-tight">{c.sub}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const RecommendationRail = () => {
   const navigate = useNavigate()
   const [recs, setRecs] = useState([])
@@ -24,30 +67,30 @@ const RecommendationRail = () => {
   }, [])
   if (recs.length === 0) return null
   return (
-    <div className="bg-white border-b border-[#D5D9D9] px-3 sm:px-4 py-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">✨</span>
-        <h2 className="font-bold text-[#0F1111] text-base sm:text-lg">Certified Refurbished For You</h2>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#232F3E] text-[#febd69]">AI picks</span>
-      </div>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-        {recs.map((l) => (
-          <button key={l.id} onClick={() => navigate(`/product/${l.id}`)}
-            className="flex-shrink-0 w-40 bg-white border border-[#D5D9D9] rounded-lg overflow-hidden text-left hover:shadow-md transition-shadow">
-            <div className="h-28 bg-gray-100 flex items-center justify-center p-2">
-              <img src={l.image} alt={l.product.title} className="max-h-full max-w-full object-contain mix-blend-multiply"
-                onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Item' }} />
-            </div>
-            <div className="p-2">
-              <div className="flex items-center gap-1 mb-1">
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${GRADE_PILL[l.grade] || ''}`}>Grade {l.grade}</span>
+    <div className="px-3 sm:px-4 mt-4">
+      <div className="bg-white border border-[#D5D9D9] rounded-lg px-4 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-5 h-5 text-[#C45500]" />
+          <h2 className="font-bold text-[#0F1111] text-base sm:text-lg">Certified Refurbished For You</h2>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#232F3E] text-[#febd69]">AI picks</span>
+        </div>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 scroll-smooth">
+          {recs.map((l) => (
+            <button key={l.id} onClick={() => navigate(`/product/${l.id}`)}
+              className="flex-shrink-0 w-52 bg-white border border-[#D5D9D9] rounded-lg overflow-hidden text-left hover:shadow-md hover:border-[#a8b2b2] transition-all">
+              <div className="h-36 bg-[#f7f7f7] flex items-center justify-center p-3 relative">
+                <img src={l.image} alt={l.product.title} className="max-h-full max-w-full object-contain mix-blend-multiply"
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Item' }} />
+                <span className={`absolute top-2 left-2 text-[10px] font-black px-1.5 py-0.5 rounded ${GRADE_PILL[l.grade] || ''}`}>Grade {l.grade}</span>
               </div>
-              <p className="text-xs text-[#0F1111] line-clamp-2 leading-snug h-8">{l.product.title}</p>
-              <p className="text-sm font-bold text-[#0F1111] mt-1">₹{parseFloat(l.price).toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-[#007185] mt-0.5 line-clamp-1">{l.rec_reason}</p>
-            </div>
-          </button>
-        ))}
+              <div className="px-3 pt-2.5 pb-3 border-t border-[#D5D9D9]">
+                <p className="text-[13px] font-medium text-[#0F1111] line-clamp-2 leading-snug min-h-[2.5rem]">{l.product.title}</p>
+                <p className="text-base font-bold text-[#0F1111] mt-2">₹{parseFloat(l.price).toLocaleString('en-IN')}</p>
+                <p className="text-[11px] text-[#007185] font-medium mt-0.5 line-clamp-1">{l.rec_reason}</p>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -125,6 +168,7 @@ const HomePage = () => {
       <main className="max-w-screen-2xl mx-auto">
         {!searchQuery && !sourceFilter && <Banner />}
         {/* {!searchQuery && !sourceFilter && <TrustStrip />} */}
+        {!searchQuery && !sourceFilter && <CategoryNav />}
         {!searchQuery && !sourceFilter && <RecommendationRail />}
         {(searchQuery || sourceFilter) && (
           <div className="px-3 sm:px-4 pt-3 pb-1">

@@ -406,12 +406,14 @@ const GradingResultPage = () => {
                   <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wider">
                     Defect map · {result.angle_heatmaps.length} angles inspected
                   </p>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="grid grid-cols-4 gap-2">
                     {result.angle_heatmaps.map((m, i) => (
-                      <div key={i} className="flex-shrink-0 w-24">
-                        <img src={`data:image/jpeg;base64,${m.b64}`} alt={m.angle_label}
-                          className="w-24 h-24 rounded object-cover border border-gray-200" />
-                        <p className="text-[9px] text-center text-gray-500 mt-0.5 truncate">
+                      <div key={i}>
+                        <div className="aspect-square rounded border border-gray-200 bg-[#f7f7f7] overflow-hidden flex items-center justify-center">
+                          <img src={`data:image/jpeg;base64,${m.b64}`} alt={m.angle_label}
+                            className="w-full h-full object-cover" />
+                        </div>
+                        <p className="text-[10px] text-center text-gray-500 mt-1 truncate">
                           {m.angle_label}{m.n_defects ? ` · ${m.n_defects}` : ''}
                         </p>
                       </div>

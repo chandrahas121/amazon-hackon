@@ -8,7 +8,7 @@ import LifecycleTimeline from '../components/LifecycleTimeline'
 import api, { getHealthCard, advanceListingStage } from '../api/client'
 import { useCart } from '../context/CartContext'
 
-const CLOTHING_KEYWORDS = ['clothing', 'fashion', 'apparel', 'garment', 'textile', 'wear', 'shirt', 'dress', 'jacket', 'pants', 'jeans', 'top', 'blouse', 'skirt', 'coat', 'shoes', 'footwear']
+const CLOTHING_KEYWORDS = ['clothing', 'fashion', 'apparel', 'garment', 'textile', 'shirt', 'dress', 'jacket', 'pants', 'jeans', 'blouse', 'skirt', 'coat']
 
 const isClothing = (category = '') =>
   CLOTHING_KEYWORDS.some((kw) => category.toLowerCase().includes(kw))
@@ -61,11 +61,14 @@ const fmtDate = (d) => {
 
 // Amazon-style "Customer reviews" block: rating summary + breakdown bars + list.
 const ReviewsSection = ({ ratings, reviews }) => {
+  const [showAll, setShowAll] = useState(false)
   const avg = ratings?.average || 0
   const total = ratings?.total || reviews.length
   const reviewCount = ratings?.review_count || reviews.length
   const breakdown = ratings?.breakdown || {}
   const denom = reviewCount || 1
+
+  const visibleReviews = showAll ? reviews : reviews.slice(0, 3)
 
   return (
     <section id="reviews" className="bg-white border border-[#D5D9D9] rounded-lg mt-4 px-4 py-5 sm:px-6 scroll-mt-4">
@@ -106,7 +109,7 @@ const ReviewsSection = ({ ratings, reviews }) => {
             <p className="text-sm text-gray-500">No written reviews yet.</p>
           )}
           <div className="divide-y divide-[#E7E7E7]">
-            {reviews.map((r) => (
+            {visibleReviews.map((r) => (
               <div key={r.id} className="py-4 first:pt-0">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-7 h-7 rounded-full bg-[#E7E9EC] flex items-center justify-center text-xs font-bold text-[#565959]">
@@ -133,6 +136,26 @@ const ReviewsSection = ({ ratings, reviews }) => {
               </div>
             ))}
           </div>
+          {reviews.length > 3 && !showAll && (
+            <div className="mt-4 pt-4 border-t border-[#E7E7E7]">
+              <button
+                onClick={() => setShowAll(true)}
+                className="text-sm font-semibold text-[#007185] hover:text-[#C45500] hover:underline"
+              >
+                See more reviews
+              </button>
+            </div>
+          )}
+          {reviews.length > 3 && showAll && (
+            <div className="mt-4 pt-4 border-t border-[#E7E7E7]">
+              <button
+                onClick={() => setShowAll(false)}
+                className="text-sm font-semibold text-[#007185] hover:text-[#C45500] hover:underline"
+              >
+                See fewer reviews
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -267,9 +290,10 @@ const ProductDetailPage = () => {
 
         <button
           onClick={() => navigate(-1)}
-          className="text-[#007185] hover:underline text-xs sm:text-sm mb-3 sm:mb-4 inline-flex items-center gap-1"
+          className="text-[#0F1111] bg-white border border-[#D5D9D9] hover:bg-[#F7F8F8] shadow-sm rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium mb-3 sm:mb-4 inline-flex items-center gap-1.5 transition-colors"
         >
-          ← Back to results
+          <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+          Back to results
         </button>
 
         {/* Mobile: image → buy box → details | Desktop: image → details → buy box */}
@@ -277,14 +301,46 @@ const ProductDetailPage = () => {
 
           {/* ── Image panel ── */}
           <div className="lg:w-[38%] order-1 flex-shrink-0">
-            <div className="bg-white border border-[#D5D9D9] rounded-lg flex items-center justify-center min-h-[240px] sm:min-h-[320px] lg:min-h-[420px] p-8">
-              <img
-                src={listing.image}
-                alt={product.title}
-                className="max-w-full max-h-56 sm:max-h-72 lg:max-h-96 object-contain mix-blend-multiply"
-                onError={(e) => { e.target.src = 'https://via.placeholder.com/300x300?text=No+Image' }}
-              />
+            <div className="bg-white border border-[#D5D9D9] rounded-lg p-6 sm:p-8 flex flex-col">
+              <div className="flex-1 flex items-center justify-center min-h-[240px] sm:min-h-[320px] lg:min-h-[360px]">
+                <img
+                  src={listing.image}
+                  alt={product.title}
+                  className="max-w-full max-h-56 sm:max-h-72 lg:max-h-96 object-contain mix-blend-multiply"
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/300x300?text=No+Image' }}
+                />
+              </div>
+
+              {listing.images && listing.images.length > 0 && !listing.is_new && (
+                <div className="mt-6 border-t border-[#D5D9D9] pt-4">
+                  <p className="text-sm font-bold text-[#0F1111] mb-2">Seller photos</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {listing.images.map((im, i) => (
+                      <div key={i} className="flex-shrink-0 w-20">
+                        <div className="w-20 h-20 rounded border border-[#D5D9D9] bg-white flex items-center justify-center overflow-hidden">
+                          <img src={im.url} alt={im.label} className="max-w-full max-h-full object-contain"
+                            onError={(e) => { e.target.style.display = 'none' }} />
+                        </div>
+                        <p className="text-[10px] text-gray-500 text-center mt-0.5">{im.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {isClothing(product.category) && (
+              <div className="mt-4">
+                <VirtualTryOn
+                  garmentImage={listing.image}
+                  garmentTitle={product.title}
+                  price={price}
+                  mrp={mrp}
+                  grade={listing.grade}
+                  gradeLabel={listing.grade_display}
+                />
+              </div>
+            )}
           </div>
 
           {/* ── Product details ── */}
@@ -371,22 +427,7 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {listing.images && listing.images.length > 0 && !listing.is_new && (
-              <div className="mb-4">
-                <p className="text-xs font-bold text-[#0F1111] mb-1.5">Seller photos</p>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {listing.images.map((im, i) => (
-                    <div key={i} className="flex-shrink-0 w-20">
-                      <div className="w-20 h-20 rounded border border-[#D5D9D9] bg-white flex items-center justify-center overflow-hidden">
-                        <img src={im.url} alt={im.label} className="max-w-full max-h-full object-contain"
-                          onError={(e) => { e.target.style.display = 'none' }} />
-                      </div>
-                      <p className="text-[10px] text-gray-500 text-center mt-0.5">{im.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Delivery / Returns / Ships from / Sold by */}
             <div className="border border-[#D5D9D9] rounded divide-y divide-[#D5D9D9] mb-5 text-sm">
@@ -396,11 +437,13 @@ const ProductDetailPage = () => {
               </div>
               <div className="flex px-3 py-2.5 gap-3">
                 <span className="text-[#0F1111] font-semibold w-20 flex-shrink-0">Returns</span>
-                <span className="text-[#0F1111]">7-day return window via Amazon Revive</span>
+                <span className="text-[#0F1111]">
+                  7-day return window {listing.is_new ? '' : 'via Amazon Revive'}
+                </span>
               </div>
               <div className="flex px-3 py-2.5 gap-3">
                 <span className="text-[#0F1111] font-semibold w-20 flex-shrink-0">Ships from</span>
-                <span className="text-[#0F1111]">Amazon Revive</span>
+                <span className="text-[#0F1111]">{listing.is_new ? 'Amazon' : 'Amazon Revive'}</span>
               </div>
               {listing.seller_name && (
                 <div className="flex px-3 py-2.5 gap-3">
@@ -510,51 +553,39 @@ const ProductDetailPage = () => {
               {staged ? (
                 <button
                   disabled
-                  className="w-full py-2 rounded text-sm font-bold border bg-[#F0F2F2] text-gray-400 cursor-default border-[#D5D9D9]"
+                  className="w-full py-2.5 rounded-full text-sm font-bold border bg-[#F0F2F2] text-gray-400 cursor-default border-[#D5D9D9]"
                 >
                   Not yet available
                 </button>
               ) : inCart ? (
                 <div className="space-y-2">
                   {/* Amazon-style qty row */}
-                  <div className="flex items-center justify-center gap-0 border border-[#D5D9D9] rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-center gap-0 border border-[#D5D9D9] rounded-full overflow-hidden h-9 bg-white shadow-sm">
                     <button
                       onClick={handleDecrement}
-                      className="w-10 h-10 flex items-center justify-center text-lg font-bold text-[#0F1111] bg-[#F0F2F2] hover:bg-[#e3e6e6] transition-colors border-r border-[#D5D9D9]"
+                      className="w-10 h-full flex items-center justify-center text-lg font-bold text-[#0F1111] bg-[#F0F2F2] hover:bg-[#e3e6e6] transition-colors border-r border-[#D5D9D9]"
                     >
                       {cartQty === 1 ? (
                         <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
                       ) : '−'}
                     </button>
-                    <span className="flex-1 text-center text-sm font-bold text-[#0F1111] bg-white py-2">
+                    <span className="flex-1 text-center text-sm font-bold text-[#0F1111] bg-white h-full flex items-center justify-center">
                       {cartQty}
                     </span>
                     <button
                       onClick={handleIncrement}
                       disabled={cartQty >= maxStock}
-                      className={`w-10 h-10 flex items-center justify-center text-lg font-bold transition-colors border-l border-[#D5D9D9]
+                      className={`w-10 h-full flex items-center justify-center text-lg font-bold transition-colors border-l border-[#D5D9D9]
                         ${cartQty >= maxStock ? 'text-gray-300 bg-[#F0F2F2] cursor-not-allowed' : 'text-[#0F1111] bg-[#F0F2F2] hover:bg-[#e3e6e6]'}`}
                     >
                       +
                     </button>
                   </div>
-                  {isSecondLife && (
-                    <p className="text-[11px] text-center text-amber-600">One-of-a-kind item · qty 1 only</p>
-                  )}
-                  {!isSecondLife && cartQty >= maxStock && (
-                    <p className="text-[11px] text-center text-amber-600">Maximum available stock reached</p>
-                  )}
-                  <button
-                    onClick={() => removeFromCart(id)}
-                    className="w-full text-center text-xs text-[#007185] hover:text-[#c45500] hover:underline py-1"
-                  >
-                    Remove from cart
-                  </button>
                 </div>
               ) : (
                 <button
                   onClick={handleAddToCart}
-                  className="w-full py-2 rounded text-sm font-bold border text-[#131921] border-[#f0c040] shadow-sm active:scale-95 transition-colors"
+                  className="w-full py-2.5 rounded-full text-sm font-bold border text-[#131921] border-[#f0c040] shadow-sm active:scale-95 transition-colors"
                   style={{ background: 'linear-gradient(180deg, #ffd99e, #febd69)' }}
                 >
                   Add to Cart
@@ -564,7 +595,7 @@ const ProductDetailPage = () => {
               {!staged && (
                 <button
                   onClick={() => { handleAddToCart(); navigate('/checkout') }}
-                  className="w-full py-2 rounded text-sm font-bold text-white border border-[#e07000] shadow-sm transition-colors active:scale-95"
+                  className="w-full py-2.5 rounded-full text-sm font-bold text-white border border-[#e07000] shadow-sm transition-colors active:scale-95"
                   style={{ background: 'linear-gradient(180deg, #ffac31, #FF9900)' }}
                 >
                   Buy Now
@@ -592,16 +623,7 @@ const ProductDetailPage = () => {
                 </>
               )}
 
-              {isClothing(product.category) && (
-                <VirtualTryOn
-                  garmentImage={listing.image}
-                  garmentTitle={product.title}
-                  price={price}
-                  mrp={mrp}
-                  grade={listing.grade}
-                  gradeLabel={listing.grade_display}
-                />
-              )}
+
 
               {isClothing(product.category) && (
                 <FitTwin
@@ -619,7 +641,7 @@ const ProductDetailPage = () => {
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex justify-between">
                   <span>Ships from</span>
-                  <span className="font-semibold text-[#0F1111]">Amazon Revive</span>
+                  <span className="font-semibold text-[#0F1111]">{listing.is_new ? 'Amazon' : 'Amazon Revive'}</span>
                 </div>
                 {listing.seller_name && (
                   <div className="flex justify-between">
