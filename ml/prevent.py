@@ -210,11 +210,25 @@ def score_risk(
                 category, brand, size_delta, prior, is_gift, user_return_rate
             )
 
+        # ── Fold in seed-time review intelligence (ml/review_insights) ──────────
+        # review_summary.return_risk raises the floor; a non-neutral fit signal bumps
+        # risk and carries a ready-made "buyers say this runs small" nudge line.
+        review_summary = item.get("review_summary") or {}
+        fit_signal = item.get("fit_signal") or {}
+        rr = review_summary.get("return_risk")
+        if isinstance(rr, (int, float)):
+            risk_score = max(risk_score, float(rr))
+        direction = fit_signal.get("direction")
+        if direction and direction != "true_to_size":
+            risk_score = min(1.0, risk_score + 0.12 * float(fit_signal.get("confidence", 0.5) or 0.5))
+
         item_risks.append({
             "product_id": item.get("product_id", "unknown"),
             "category": category,
             "brand": brand,
             "risk": round(risk_score, 3),
+            "nudge_line": (review_summary.get("nudge_line") or "").strip(),
+            "fit_direction": direction or "",
         })
 
     if not item_risks:
@@ -240,7 +254,9 @@ def score_risk(
         - float(user_history.get("size_history", {}).get(flagged["category"], 0))
     )
 
-    nudge = _nudge_text(
+    # Prefer the review-derived nudge ("Buyers say this runs small …") when the mined
+    # fit signal produced one; otherwise fall back to the profile/brand heuristic.
+    nudge = flagged.get("nudge_line") or _nudge_text(
         overall_risk,
         flagged["brand"],
         size_delta,

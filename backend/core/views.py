@@ -373,6 +373,11 @@ class ListingDetailView(APIView):
             'breakdown': {str(k): breakdown[k] for k in (5, 4, 3, 2, 1)},
         }
         data['reviews'] = ReviewSerializer(reviews[:30], many=True).data
+        # Pillar-4 review intelligence (mined at seed time): the "What buyers say"
+        # card + fit/sizing verdict. Also present under data['product'] via the
+        # serializer, surfaced top-level here for the product-page card.
+        data['review_summary'] = listing.product.review_summary
+        data['fit_signal'] = listing.product.fit_signal
         return Response(data)
 
 

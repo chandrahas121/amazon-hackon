@@ -81,12 +81,50 @@ def _user_profile(request):
 
 
 class RiskView(APIView):
-    """POST /api/prevent/risk/ — legacy per-cart risk (kept so existing UI works)."""
+    """POST /api/prevent/risk/ — per-cart return risk + nudge.
+
+    Body: {"cart": [{"listing_id": <id>, "size": <optional>}, ...]}
+    Each line is resolved listing→product so the score uses the product's real
+    category/brand plus the seed-time review intelligence (fit_signal,
+    review_summary) — that's what folds "buyers say this runs small" into the nudge.
+    A legacy raw-dict shape ({category, brand, ...}) is still accepted unchanged.
+    """
     permission_classes = [AllowAny]
+
+    def _resolve(self, cart):
+        from core.models import Listing
+        items = []
+        for line in cart or []:
+            if not isinstance(line, dict):
+                continue
+            lid = line.get("listing_id") or line.get("id")
+            if lid is None and ("category" in line or "brand" in line):
+                items.append(line)   # legacy pre-resolved shape
+                continue
+            try:
+                lst = Listing.objects.select_related("product").get(pk=lid)
+            except (Listing.DoesNotExist, ValueError, TypeError):
+                continue
+            p = lst.product
+            try:
+                size = float(line.get("size"))   # numeric sizes feed the size-delta model
+            except (TypeError, ValueError):
+                size = 0                          # letter sizes (S/M/L) carry no numeric delta
+            items.append({
+                "product_id": str(p.id),
+                "category": p.category,
+                "brand": p.brand,
+                "size": size,
+                "is_gift": bool(line.get("is_gift", False)),
+                "mrp": float(p.mrp),
+                "fit_signal": p.fit_signal,
+                "review_summary": p.review_summary,
+            })
+        return items
 
     def post(self, request):
         user_id = str(request.user.id) if request.user.is_authenticated else "anonymous"
-        cart_items = request.data.get("cart", [])
+        cart_items = self._resolve(request.data.get("cart", []))
         try:
             from ml.prevent import score_risk
             result = score_risk(user_id=user_id, cart_items=cart_items)

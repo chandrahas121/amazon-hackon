@@ -147,6 +147,88 @@ const ReviewsSection = ({ ratings, reviews }) => {
   )
 }
 
+// Pillar-4 "What buyers say" card — review-mined pros/cons + fit verdict, fed by the
+// detail endpoint's review_summary / fit_signal. Pure presentation; renders nothing
+// when there's no mined intel.
+const FIT_TENDENCY = {
+  runs_small: 'Buyers say this tends to run small — consider sizing up.',
+  runs_large: 'Buyers say this tends to run large — consider sizing down.',
+  true_to_size: 'Buyers say this fits true to size.',
+}
+
+const BuyersSayCard = ({ summary, fitSignal }) => {
+  const s = summary || {}
+  const pros = s.pros || []
+  const cons = s.cons || []
+  const reasons = (s.return_reasons || []).filter((r) => r && r.reason).slice(0, 2)
+  const fitLine = s.fit_verdict || (fitSignal && FIT_TENDENCY[fitSignal.direction]) || ''
+  const hasBody = s.tldr || pros.length || cons.length || fitLine || reasons.length
+  if (!hasBody) return null
+
+  return (
+    <section className="bg-white border border-[#D5D9D9] rounded-lg mt-4 px-4 py-5 sm:px-6">
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-lg sm:text-xl font-bold text-[#0F1111]">What buyers say</h2>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#232F3E] text-[#febd69]">
+          AI summary
+        </span>
+      </div>
+
+      {s.tldr && <p className="text-sm text-[#0F1111] leading-relaxed mb-4">{s.tldr}</p>}
+
+      {(pros.length > 0 || cons.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="text-sm font-bold text-[#0F1111] mb-1.5">Pros</p>
+            <ul className="space-y-1">
+              {pros.length === 0 && <li className="text-sm text-gray-400">—</li>}
+              {pros.map((p, i) => (
+                <li key={i} className="flex gap-1.5 text-sm text-[#0F1111]">
+                  <span className="text-[#007600] font-bold leading-5">✓</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#0F1111] mb-1.5">Cons</p>
+            <ul className="space-y-1">
+              {cons.length === 0 && <li className="text-sm text-gray-400">—</li>}
+              {cons.map((c, i) => (
+                <li key={i} className="flex gap-1.5 text-sm text-[#565959]">
+                  <span className="text-[#bd4a17] font-bold leading-5">–</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Fit & sizing callout — mirrors the "AI Condition Notes" pattern */}
+      {fitLine && (
+        <div className="border-l-4 border-[#FF9900] bg-[#FFFBF0] rounded-r p-3 mb-3">
+          <p className="text-xs font-bold text-[#0F1111] mb-1">Fit &amp; sizing</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{fitLine}</p>
+        </div>
+      )}
+
+      {reasons.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 mb-1.5">Why a few people return this</p>
+          <div className="flex flex-wrap gap-1.5">
+            {reasons.map((r, i) => (
+              <span key={i} className="text-[11px] text-gray-600 bg-[#F0F2F2] border border-[#D5D9D9] rounded-full px-2.5 py-0.5">
+                {r.reason}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 const ProductDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -619,6 +701,7 @@ const ProductDetailPage = () => {
                   size={selectedSize}
                   availableSizes={SIZES}
                   sizeSystem="letter"
+                  fitSignal={listing.fit_signal}
                 />
               )}
 
@@ -681,6 +764,9 @@ const ProductDetailPage = () => {
           )}
 
         </div>
+
+        {/* ── What buyers say (Pillar-4 review intelligence) ── */}
+        <BuyersSayCard summary={listing.review_summary} fitSignal={listing.fit_signal} />
 
         {/* ── Customer reviews (real Amazon Reviews 2023 data) ── */}
         {listing.reviews && (

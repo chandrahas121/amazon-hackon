@@ -301,3 +301,29 @@ Default (no env) = fast catalog/heuristic pricing. RAM ~1GB for the models. Reco
 Q1 return prompts category-based ✅ | Q2 catalog price/match ✅ | Q3 delist ✅ | Q4 instance gate (DINOv2) ✅ | Q5 risk tier backend-only ✅ | Q6 dedup ✅ | Q7 category not tier ✅ | Q8 rubric+E/F ✅ | Q9 grade+defects in price ✅ | Q10 demand index ⚠️ synthetic | Q11 Revive/Renewed + 2 health cards ✅ design & implementation.
 Later: multi-image grade ✅ | grading speed (keras gated) ✅ | location once ✅ | real data importer ✅ | disposition-authoritative routing ✅.
 Latest feedback: two Health Cards (Renewed vs Revive) ✅ | seller photos persisted + shown ✅ | **real-Amazon storefront** (New catalog default, curated minority Revive/Renewed, All tab, buying options) ✅ | grades are demo-curated only, real grading stays the live AI flow ✅ | guaranteed branded catalog so Sell-It search finds Nike/Vivo/Samsung/Dell/Levi's etc. ✅.
+
+## 8. REAL CATALOG + MULTI-AGENT REVIEW INTELLIGENCE (Pillar 4)
+**Catalog is now curated + real Amazon data.** `data/download_reviews.py` keeps the real
+image/price/brand/rating it already streamed from the Amazon Reviews 2023 metadata (was discarded),
+writes `data/catalog_{phone,laptop,monitor,footwear,apparel}.jsonl` alongside `reviews_*.jsonl`
+(same ASIN set), adds a **monitor** bucket, and supports `--local DIR`. `_real_catalog.py`
+upserts those real ASINs as NEW listings; `seed_demo` keeps the curated `_demo_catalog` (so Sell-It
+search + brands still work) and **adds** the real products, each getting its **own** ASIN's reviews
+1:1 (curated products still borrow a category-matched real set).
+
+**Multi-agent review panel** (`ml/review_insights.py`, cached by ASIN, offline-safe): a panel of
+specialist roles (Fit / Quality-Durability / Expectation-Gap / Pros-Cons) + synthesizer mines each
+product's reviews into `Product.fit_signal` (`runs_small|true_to_size|runs_large`) and
+`Product.review_summary` (`tldr,pros,cons,fit_verdict,return_risk,return_reasons,nudge_line`).
+Default = one cached structured call; `REVIEW_PANEL_MULTI=1` = true fan-out. No `OPENROUTER_API_KEY`
+→ deterministic offline fit signal + heuristic return_risk (LLM text omitted).
+
+**Surfaces (Amazon theme):** home tile shows a "Runs small/large" pill + low-return keep-rate line
+(`Product.jsx`); product page shows a "What buyers say" card above reviews (`ProductDetailPage.jsx`);
+checkout fetches `/api/prevent/risk/` (which resolves listing→product+fit_signal) and renders the
+review-derived nudge via `ReturnNudge` (`CheckoutPage.jsx`); `FitTwin` shows a review fit line.
+Migration `0009` adds the two `Product` JSON fields.
+
+**Data note:** the dataset host `mcauleylab.ucsd.edu` must be on the env network allowlist (or use
+`--local`) to regenerate `catalog_*.jsonl`. Without the files, seed runs on the curated catalog
+alone (graceful no-op) and the review panel still runs on the borrowed reviews.

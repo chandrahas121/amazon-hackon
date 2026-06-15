@@ -112,6 +112,8 @@ const HomePage = () => {
           second_life: l.second_life,
           rating: l.product.rating,
           rating_count: l.product.rating_count,
+          fit_signal: l.product.fit_signal,
+          review_summary: l.product.review_summary,
         })))
       })
       .catch(() => { setProducts([]); setTotal(0); setNumPages(1) })

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import GreenCredits from '../components/stitch/GreenCredits'
+import ReturnNudge from '../components/stitch/ReturnNudge'
 import api, { redeemCredits } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -15,8 +16,26 @@ const CheckoutPage = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [dismissedSizeNudge, setDismissedSizeNudge] = useState(false)
+  const [risk, setRisk] = useState(null)
 
   const finalTotal = Math.max(0, cartTotal - redeemedCredits * 0.1)
+
+  // Pillar-4 return-risk: ask the backend to score the cart (it resolves each line
+  // listing→product and folds in the mined review fit-signal), then surface the
+  // review-derived sizing nudge via <ReturnNudge>. Keyed on the listing ids in cart.
+  const cartIdsKey = cart.map((it) => `${it.id}:${it.size || ''}`).join(',')
+  useEffect(() => {
+    if (cart.length === 0) { setRisk(null); return }
+    let alive = true
+    api
+      .post('/api/prevent/risk/', {
+        cart: cart.map((it) => ({ listing_id: it.id, size: it.size })),
+      })
+      .then((res) => alive && setRisk(res.data))
+      .catch(() => alive && setRisk(null))
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartIdsKey])
 
   // Products the shopper has added in MORE THAN ONE size — a classic "size hedge"
   // that drives returns. We nudge them to the product's fit guide instead.
@@ -102,6 +121,13 @@ const CheckoutPage = () => {
                     Cart ({cartItemCount} item{cartItemCount !== 1 ? 's' : ''})
                   </h2>
                 </div>
+
+                {/* Review-derived return nudge (Pillar 4): "Buyers say this runs small…" */}
+                {risk && (risk.nudge_text || risk.bracket_nudge) && (
+                  <div className="px-3 sm:px-4 pt-3">
+                    <ReturnNudge risk={risk} />
+                  </div>
+                )}
 
                 {/* Return prevention nudge — Pillar 4: shown only when the shopper
                     has added the same product in more than one size. */}

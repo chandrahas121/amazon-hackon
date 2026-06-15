@@ -103,6 +103,8 @@ const ProductFeed = ({ products, loading, showHeading = true, page = 1, numPages
               rating={p.rating}
               ratingCount={p.rating_count}
               lifecycle={p.lifecycle}
+              fitSignal={p.fit_signal}
+              reviewSummary={p.review_summary}
             />
           ))}
         </div>

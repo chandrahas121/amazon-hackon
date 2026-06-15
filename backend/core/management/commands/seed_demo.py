@@ -1,13 +1,21 @@
 """
-python manage.py seed_demo  — self-contained DEMO catalog (NO dataset files).
+python manage.py seed_demo  — storefront catalog: curated brands + REAL Amazon data.
 
-Builds the whole storefront from the curated branded catalog in _demo_catalog.py
-(phones, laptops, monitors, shoes, t-shirts/shirts/pants + a few Home/Books/Toys
-extras). Every product is a normal Amazon NEW listing; a hand-picked subset is
-ALSO listed as Revive (AI-graded, seller photos) or Renewed (professional) on the
-SAME product, so the product page shows New + Used/Renewed buying options.
+Builds the storefront from two sources:
+  • the curated branded catalog in _demo_catalog.py (phones, laptops, monitors,
+    shoes, t-shirts/shirts/pants + a few Home/Books/Toys extras) — guarantees the
+    Sell-It catalog search + recognizable demo brands; and
+  • real Amazon ASINs from data/catalog_{bucket}.jsonl (real image + title + price),
+    each carrying its OWN ASIN's real reviews 1:1 (see _real_catalog.py).
+Real products are skipped gracefully if the catalog files aren't present (e.g. the
+dataset host wasn't reachable) — the storefront then runs on the curated set alone.
 
-This replaces seed_real / the Amazon-dataset import (import_amazon_data.py,
+Every product is a normal Amazon NEW listing; a hand-picked subset is ALSO listed as
+Revive (AI-graded, seller photos) or Renewed (professional) on the SAME product. Each
+product's reviews are mined by the Pillar-4 review panel (ml/review_insights.py) into a
+fit signal + a "What buyers say" summary that also drives the checkout return nudge.
+
+This replaces seed_real / the legacy Amazon-dataset import (import_amazon_data.py,
 download_datasets.py, data/meta_*.jsonl) for the demo — those are deprecated.
 
 Run:
@@ -37,6 +45,7 @@ from trust.models import HealthCard, LedgerEntry
 from green.models import CreditTransaction
 from core.management.commands.import_amazon_data import create_listing_for, _route_fn
 from core.management.commands._demo_catalog import upsert_demo_catalog
+from core.management.commands._real_catalog import upsert_real_catalog
 
 SELLERS = [
     ("aarav.seller@revive.in", "Aarav", "Mehta", "tbxx1"),
@@ -55,7 +64,7 @@ REVIVE_LEAD_CATS = ["Apparel", "Footwear"]
 DATA_DIR = Path(__file__).resolve().parents[4] / "data"
 # storefront bucket file → catalogue category it feeds.
 REVIEW_BUCKETS = {
-    "phone": "Phone", "laptop": "Laptop",
+    "phone": "Phone", "laptop": "Laptop", "monitor": "Monitor",
     "footwear": "Footwear", "apparel": "Apparel",
 }
 
@@ -220,18 +229,65 @@ class Command(BaseCommand):
                             help="How many items to also list as Revive (tees/shoes + a few open-box).")
 
     # ── Real Amazon reviews → products, by category ──────────────────────────
+    def _borrow_assign(self, pool, curated_targets, category):
+        """Existing category-matched borrowing for CURATED (DEMO-xxx) products that
+        have no real ASIN of their own. Returns {product_id: [review records]}."""
+        if not curated_targets:
+            return {}
+        by_asin = {}
+        for rec in pool:
+            a = rec.get("asin", "")
+            if not _ptitle_ok(rec.get("ptitle", ""), category):
+                continue
+            by_asin.setdefault(a, []).append(rec)
+
+        def _avg(recs):
+            return sum(int(r.get("rating", 5) or 5) for r in recs) / len(recs)
+        asins = [a for a, recs in by_asin.items()
+                 if a and len(recs) >= 5 and _avg(recs) >= 3.8]
+        asins.sort(key=lambda a: (-_avg(by_asin[a]), -len(by_asin[a])))
+        if not asins:
+            asins = sorted((a for a, recs in by_asin.items() if a and len(recs) >= 5),
+                           key=lambda a: -len(by_asin[a]))
+        if category in ("Apparel", "Footwear"):
+            kept = [a for a in asins if not _asin_is_wrong(by_asin[a], category)]
+            if len(kept) >= 8:
+                asins = kept
+        if not asins:
+            return {}
+
+        out = {}
+        if category == "Apparel":
+            from collections import defaultdict
+            group_pool = defaultdict(list)
+            for a in asins:
+                ptitle = next((r.get("ptitle") for r in by_asin[a] if r.get("ptitle")), "")
+                agg = ptitle or " ".join((r.get("title", "") + " " + r.get("text", ""))
+                                         for r in by_asin[a])
+                group_pool[_apparel_group(agg)].append(a)
+            gi = defaultdict(int)
+            for p in curated_targets:
+                g = _apparel_group(p.title)
+                lst = group_pool.get(g) or asins
+                out[p.id] = by_asin[lst[gi[g] % len(lst)]]
+                gi[g] += 1
+        else:
+            for i, p in enumerate(curated_targets):
+                out[p.id] = by_asin[asins[i % len(asins)]]
+        return out
+
     @transaction.atomic
     def _seed_reviews(self, products):
         by_cat = {}
         for p in products:
             by_cat.setdefault(p.category, []).append(p)
 
-        # Reviews are grouped BY REAL PRODUCT (ASIN) in the dataset files. We give
-        # each demo product ONE real product's full review set, so every review on a
-        # page is genuinely about a single real product of the right category — no
-        # cross-product mismatches. (Same idea as Fit-Twin's per-item assignment.)
+        # Each demo product gets ONE real product's full review set. A REAL Amazon
+        # product gets its OWN ASIN's reviews 1:1 (identity is exact); a curated
+        # DEMO product borrows a category/garment-matched real product's reviews.
         rng = random.Random(11)
         total = 0
+        seeded = []   # (product, attached records, category) → review-panel input
         for bucket, category in REVIEW_BUCKETS.items():
             pool = _load_reviews(bucket)
             targets = by_cat.get(category, [])
@@ -239,63 +295,26 @@ class Command(BaseCommand):
                 self.stdout.write(f"  reviews[{bucket}]: no data/targets — skipped")
                 continue
 
-            # Group the bucket's reviews by their real product (ASIN), dropping any
-            # ASIN whose REAL product title is an accessory / wrong item.
-            by_asin = {}
+            # All reviews grouped by their real product ASIN (1:1 lookup for real items).
+            raw_by_asin = {}
             for rec in pool:
                 a = rec.get("asin", "")
-                if not _ptitle_ok(rec.get("ptitle", ""), category):
-                    continue
-                by_asin.setdefault(a, []).append(rec)
-            # Believable picks: enough reviews + a healthy average (so a flagship
-            # never shows a 2★ product's reviews). Best-reviewed products first.
-            def _avg(recs):
-                return sum(int(r.get("rating", 5) or 5) for r in recs) / len(recs)
-            asins = [a for a, recs in by_asin.items()
-                     if a and len(recs) >= 5 and _avg(recs) >= 3.8]
-            asins.sort(key=lambda a: (-_avg(by_asin[a]), -len(by_asin[a])))
-            if not asins:   # relax the average floor if filtering left too few
-                asins = sorted((a for a, recs in by_asin.items() if a and len(recs) >= 5),
-                               key=lambda a: -len(by_asin[a]))
-            # Drop ASINs that are really accessories (belts/socks/laces…) — they
-            # slip past the keyword filter by mentioning "pants"/"shoes".
-            if category in ("Apparel", "Footwear"):
-                kept_asins = [a for a in asins if not _asin_is_wrong(by_asin[a], category)]
-                if len(kept_asins) >= 8:   # prefer the clean pool (products may repeat)
-                    asins = kept_asins
+                if a:
+                    raw_by_asin.setdefault(a, []).append(rec)
 
-            if not asins:
-                self.stdout.write(f"  reviews[{bucket}]: no product had enough reviews — skipped")
-                continue
+            real_targets = [p for p in targets if p.asin in raw_by_asin]
+            curated_targets = [p for p in targets if p.asin not in raw_by_asin]
 
-            # Apparel mixes garment types — match each product to a real product of
-            # the SAME garment group (tee↔tee, jeans↔jeans, shirt↔shirt, …) so a
-            # formal shirt never shows jeans reviews. Other buckets are single-type.
-            prod_asin = {}
-            if category == "Apparel":
-                from collections import defaultdict
-                group_pool = defaultdict(list)
-                for a in asins:   # asins already sorted best-first
-                    # Classify by the REAL product title (ptitle) when available —
-                    # far more reliable than guessing from review text.
-                    ptitle = next((r.get("ptitle") for r in by_asin[a] if r.get("ptitle")), "")
-                    agg = ptitle or " ".join((r.get("title", "") + " " + r.get("text", ""))
-                                             for r in by_asin[a])
-                    group_pool[_apparel_group(agg)].append(a)
-                gi = defaultdict(int)
-                for p in targets:
-                    g = _apparel_group(p.title)
-                    lst = group_pool.get(g) or asins   # fall back to any if group empty
-                    prod_asin[p.id] = lst[gi[g] % len(lst)]
-                    gi[g] += 1
-            else:
-                for i, p in enumerate(targets):
-                    prod_asin[p.id] = asins[i % len(asins)]
+            prod_recs = {p.id: raw_by_asin[p.asin] for p in real_targets}   # 1:1
+            prod_recs.update(self._borrow_assign(pool, curated_targets, category))
 
             objs = []
+            seeded_targets = []
             for p in targets:
-                recs = [r for r in by_asin[prod_asin[p.id]]
-                        if not _title_accessory(r.get("title", ""))]   # one real product per item
+                recs = [r for r in (prod_recs.get(p.id) or [])
+                        if not _title_accessory(r.get("title", ""))]
+                if not recs:
+                    continue
                 rng.shuffle(recs)
                 recs = recs[:15]
                 ratings = []
@@ -319,11 +338,53 @@ class Command(BaseCommand):
                 # catalogue figure (Amazon shows far more ratings than reviews).
                 p.rating = round(sum(ratings) / len(ratings), 1) if ratings else p.rating
                 total += len(recs)
+                seeded_targets.append(p)
+                seeded.append((p, recs, category))
             Review.objects.bulk_create(objs)
             Product.objects.bulk_update(targets, ["rating"])
-            self.stdout.write(f"  reviews[{bucket}->{category}]: {len(objs)} reviews "
-                              f"across {len(targets)} products ({len(asins)} real products in pool)")
+            self.stdout.write(
+                f"  reviews[{bucket}->{category}]: {len(objs)} reviews across "
+                f"{len(seeded_targets)} products ({len(real_targets)} real 1:1, "
+                f"{len(curated_targets)} curated borrowed)")
+
+        # Pillar-4 review intelligence: mine fit signal + run the cached review panel
+        # on everything that received reviews (fit_signal for apparel/footwear; the
+        # review_summary card + return signal for all graded categories).
+        self._run_review_panel(seeded)
         return total
+
+    def _run_review_panel(self, seeded):
+        """Populate Product.fit_signal + Product.review_summary from the attached
+        reviews. Fails open per-product (offline → heuristic summary, no crash)."""
+        if not seeded:
+            return
+        import sys
+        from pathlib import Path as _P
+        repo_root = str(_P(__file__).resolve().parents[4])
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        try:
+            from ml.review_insights import review_panel, mine_fit_signal
+        except Exception as e:
+            self.stdout.write(f"  review panel unavailable ({e}) — skipping insights")
+            return
+
+        FIT_CATS = {"Apparel", "Footwear"}
+        updated, with_fit = [], 0
+        for p, recs, category in seeded:
+            try:
+                p.review_summary = review_panel(p.asin, p.title, category, recs)
+                if category in FIT_CATS:
+                    fs = mine_fit_signal(recs)
+                    p.fit_signal = fs
+                    if fs:
+                        with_fit += 1
+            except Exception:
+                continue
+            updated.append(p)
+        if updated:
+            Product.objects.bulk_update(updated, ["fit_signal", "review_summary"])
+        self.stdout.write(f"  review panel: {len(updated)} summaries · {with_fit} fit signals")
 
     def handle(self, *args, **o):
         # 1) Demo sellers + buyer
@@ -352,12 +413,17 @@ class Command(BaseCommand):
         Product.objects.all().delete()
         CreditTransaction.objects.filter(user=demo).delete()
 
-        self.stdout.write("Building branded NEW catalog...")
-        products = upsert_demo_catalog()   # each gets one NEW listing at MRP
+        self.stdout.write("Building catalog (curated + real Amazon)...")
+        products = upsert_demo_catalog()   # curated branded products, one NEW listing each
+        real = upsert_real_catalog()       # real Amazon ASINs (real image/title/price/reviews)
+        products = products + real
+        self.stdout.write(f"  catalog: {len(products) - len(real)} curated + {len(real)} real "
+                          f"= {len(products)} products")
 
-        # 2b) Attach REAL Amazon reviews (downloaded from the UCSD Amazon Reviews
-        #     2023 dataset) to products, by category — and set each product's
-        #     star rating from the real reviews it received.
+        # 2b) Attach REAL Amazon reviews (UCSD Amazon Reviews 2023). Real products get
+        #     their OWN ASIN's reviews 1:1; curated products borrow a matched real set.
+        #     Each product's star rating is recomputed from the reviews it received,
+        #     then the review panel mines fit_signal + the "What buyers say" summary.
         n_reviews = self._seed_reviews(products)
 
         # 2c) Pillar 4 — Fit-Twin. Give every APPAREL product a real item from the
@@ -465,6 +531,9 @@ class Command(BaseCommand):
                     return m
             return qs.order_by("-mrp").first()
 
+        # Hero return targets — one concrete product per demo category. Real ASINs
+        # have arbitrary titles, so pick the highest-value item in each category
+        # (the brand literals are kept only as a hint for the curated catalog).
         return_targets = [
             _pick("Phone", "iPhone 14"),
             _pick("Laptop", "Inspiron"),
