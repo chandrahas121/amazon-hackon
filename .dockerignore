@@ -16,7 +16,6 @@ backend/staticfiles/
 backend/media/
 
 # ML artifacts that are large (the grade cache and FAISS index can be large)
-ml/artifacts/fittwin_index.pkl
 ml/artifacts/grade_cache.json
 
 # Frontend (built separately)
