@@ -12,6 +12,8 @@ gunicorn==21.2.0
 whitenoise==6.6.0
 # Redis cache backend for Django
 django-redis==5.4.0
+# Celery — production async task queue for ML grading pipeline
+celery[redis]==5.3.6
 # AWS S3 image storage (boto3 is pulled in as a dependency)
 django-storages[s3]==1.14.4
 

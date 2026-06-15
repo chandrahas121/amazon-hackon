@@ -1,2 +1,3 @@
 web: gunicorn revive.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
 release: python manage.py migrate --noinput
+worker: celery -A revive worker --loglevel=info --concurrency=2

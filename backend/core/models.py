@@ -123,6 +123,14 @@ class Listing(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['status', 'source'],  name='listing_status_source_idx'),
+            models.Index(fields=['geohash5', 'status'], name='listing_geohash_status_idx'),
+            models.Index(fields=['product', 'status'],  name='listing_product_status_idx'),
+            models.Index(fields=['-created_at'],        name='listing_created_desc_idx'),
+        ]
+
     def __str__(self):
         return f"{self.product.title} [{self.grade}] @ ₹{self.price}"
 

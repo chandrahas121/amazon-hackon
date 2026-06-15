@@ -191,6 +191,20 @@ else:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# ─── Celery (async ML grading queue) ─────────────────────────────────────────
+# Broker and result backend both use the same Upstash Redis as the cache.
+# The Celery worker runs as a separate Render Background Worker service.
+# Locally falls back to redis://localhost when REDIS_URL is not set.
+_celery_broker = _REDIS_URL or 'redis://localhost:6379/0'
+CELERY_BROKER_URL = _celery_broker
+CELERY_RESULT_BACKEND = _celery_broker
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_SOFT_TIME_LIMIT = 120      # ML grading hard cap: 2 min per job
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # one job at a time per worker (ML is memory-heavy)
+
 # ─── Production security (auto-enabled when DEBUG=False) ─────────────────────
 # Railway/Render/Vercel sit behind a TLS-terminating reverse proxy, so we tell
 # Django to trust the X-Forwarded-Proto header they add.

@@ -3,6 +3,11 @@ Grade app — wired to real ml.grade_image() pipeline.
 Gracefully falls back to a default B grade if ML is unavailable.
 """
 import logging
+import os
+import threading
+import uuid
+
+from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -495,3 +500,82 @@ class HeatmapView(APIView):
         except Exception as e:
             logger.error(f"Heatmap failed: {e}")
             return Response({'error': 'Heatmap generation failed.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+_CATEGORY_MAP = {
+    'fashion': 'Clothing', 'home & garden': 'Home & Kitchen',
+    'toys & games': 'Toys', 'sports & outdoors': 'Sports',
+    'beauty & health': 'Beauty', 'automotive': 'Other', 'music': 'Other',
+}
+
+
+class AsyncGradeView(APIView):
+    """
+    POST /api/grade/async/
+
+    Non-blocking grading with automatic mode selection:
+
+    Production (REDIS_URL set on Render):
+      Django encodes image as base64 → pushes job to Upstash Redis queue →
+      returns job_id in <5ms → Celery worker picks it up → writes result.
+      Multiple workers can run concurrently — true horizontal ML scaling.
+
+    Local dev (no REDIS_URL):
+      Falls back to a daemon background thread. Caller sees identical behaviour.
+
+    Poll GET /api/grade/status/<job_id>/ until result["status"] == "done".
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        import base64 as _b64
+        from django.conf import settings as _settings
+
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response({'error': 'image file is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        image_bytes = image_file.read()
+        product_id = request.data.get('product_id', 'UNKNOWN')
+        raw_category = request.data.get('category', 'Electronics')
+        category = _CATEGORY_MAP.get(raw_category.lower(), raw_category)
+        operator = request.data.get('operator', 'seller')
+        job_id = uuid.uuid4().hex
+
+        cache.set(f'grade_job:{job_id}', {'status': 'processing', 'job_id': job_id}, 3600)
+
+        if os.environ.get('REDIS_URL'):
+            # Production: dispatch to Celery worker via Upstash Redis queue
+            from grade.tasks import grade_image_task
+            image_b64 = _b64.b64encode(image_bytes).decode('utf-8')
+            grade_image_task.delay(image_b64, product_id, category, operator, job_id)
+        else:
+            # Local dev: background thread (no separate worker process needed)
+            def _worker():
+                try:
+                    result = _run_grade(image_bytes, product_id, category, operator)
+                    result['status'] = 'done'
+                    result['job_id'] = job_id
+                except Exception as exc:
+                    result = {**_FALLBACK, 'status': 'done', 'job_id': job_id, 'error': str(exc)}
+                cache.set(f'grade_job:{job_id}', result, 3600)
+            threading.Thread(target=_worker, daemon=True).start()
+
+        return Response({'job_id': job_id, 'status': 'processing'}, status=status.HTTP_202_ACCEPTED)
+
+
+class GradeStatusView(APIView):
+    """
+    GET /api/grade/status/<job_id>/
+
+    Returns {status: "processing"} while the background thread is running,
+    or the full grade result (same shape as POST /api/grade/) once done.
+    Returns 404 if the job_id is unknown or the result has expired (>1 hour).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, job_id):
+        result = cache.get(f'grade_job:{job_id}')
+        if result is None:
+            return Response({'error': 'Job not found or expired.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(result)

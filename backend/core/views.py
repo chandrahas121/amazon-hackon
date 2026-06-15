@@ -240,7 +240,9 @@ class ListingListView(APIView):
             image_file.seek(0)
             filename = f"listings/{uuid.uuid4().hex}_{image_file.name}"
             path = default_storage.save(filename, image_file)
-            image_url = request.build_absolute_uri(settings.MEDIA_URL + path)
+            # Use storage backend's url() — works for both local (/media/...) and S3 (https://...)
+            raw_url = default_storage.url(path)
+            image_url = request.build_absolute_uri(raw_url)
 
         grade_result = {
             'grade': 'B',
@@ -418,6 +420,11 @@ class RecommendView(APIView):
 
         user_geo = request.user.geohash5 if getattr(request, 'user', None) and request.user.is_authenticated else ''
 
+        _cache_key = f"recommend|{user_geo}|{n}"
+        cached = cache.get(_cache_key)
+        if cached is not None:
+            return Response(cached)
+
         qs = (Listing.objects
               .filter(status='listed', grade__in=['A', 'B'])
               .select_related('product', 'seller'))
@@ -445,7 +452,10 @@ class RecommendView(APIView):
             data['rec_score'] = round(score, 4)
             data['rec_reason'] = reason
             results.append(data)
-        return Response({'results': results, 'count': len(results)})
+
+        response_data = {'results': results, 'count': len(results)}
+        cache.set(_cache_key, response_data, 120)
+        return Response(response_data)
 
 
 class MyListingsView(APIView):
