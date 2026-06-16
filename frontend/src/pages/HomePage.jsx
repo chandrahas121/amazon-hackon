@@ -82,7 +82,7 @@ const RecommendationRail = () => {
               <div className="h-36 bg-[#f7f7f7] flex items-center justify-center p-3 relative">
                 <img src={l.image} alt={l.product.title} className="max-h-full max-w-full object-contain mix-blend-multiply"
                   onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Item' }} />
-                <span className={`absolute top-2 left-2 text-[10px] font-black px-1.5 py-0.5 rounded ${GRADE_PILL[l.grade] || ''}`}>Grade {l.grade}</span>
+                {/* Grade pill intentionally omitted — these are Amazon-guaranteed Certified Refurbished picks. */}
               </div>
               <div className="px-3 pt-2.5 pb-3 border-t border-[#D5D9D9]">
                 <p className="text-[13px] font-medium text-[#0F1111] line-clamp-2 leading-snug min-h-[2.5rem]">{l.product.title}</p>
@@ -157,6 +157,8 @@ const HomePage = () => {
           second_life: l.second_life,
           rating: l.product.rating,
           rating_count: l.product.rating_count,
+          fit_signal: l.product.fit_signal,
+          review_summary: l.product.review_summary,
         })))
       })
       .catch(() => { setProducts([]); setTotal(0); setNumPages(1) })

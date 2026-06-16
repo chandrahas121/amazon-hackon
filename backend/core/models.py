@@ -40,6 +40,12 @@ class Product(models.Model):
     rating_count = models.IntegerField(default=0)
     # Pillar 4 — link to the clothing-fit dataset item this product represents
     fit_item_id = models.CharField(max_length=40, blank=True, default='')
+    # Pillar 4 — review-mined intelligence (populated at seed time by ml.review_insights):
+    #   fit_signal      = {direction: runs_small|true_to_size|runs_large, confidence, mentions}
+    #   review_summary  = {tldr, pros[], cons[], fit_verdict, return_risk,
+    #                      return_reasons[{reason,share}], nudge_line}
+    fit_signal = models.JSONField(null=True, blank=True)
+    review_summary = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return self.title

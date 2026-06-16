@@ -28,7 +28,13 @@ const TENDENCY = {
   true_to_size: 'fits true to size',
 };
 
-const FitTwin = ({ category, itemId, brand, size, availableSizes, sizeSystem, onTryOn }) => {
+// Review-mined sizing skew → plain sentence (matches the card / nudge wording).
+const REVIEW_FIT_LINE = {
+  runs_small: 'Buyers report this runs small.',
+  runs_large: 'Buyers report this runs large.',
+}
+
+const FitTwin = ({ category, itemId, brand, size, availableSizes, sizeSystem, onTryOn, fitSignal }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -61,7 +67,11 @@ const FitTwin = ({ category, itemId, brand, size, availableSizes, sizeSystem, on
   }
   if (!data || !data.available) return null;
 
-  const dir = DIRECTION[data.direction] || DIRECTION.true_to_size;
+  // The product's OWN review-mined skew (fitSignal) is the source of truth and is
+  // shared with the "What buyers say" card + checkout nudge — prefer it over the
+  // cross-dataset FitTwin direction so the three surfaces never contradict.
+  const effectiveDirection = (fitSignal && fitSignal.direction) || data.direction;
+  const dir = DIRECTION[effectiveDirection] || DIRECTION.true_to_size;
   const rec = data.recommended_size;          // stable, data-driven best fit
   // does the shopper's currently-picked size match the recommendation? (client-side,
   // so the badge updates instantly without re-fetching or changing the headline)
@@ -114,6 +124,16 @@ const FitTwin = ({ category, itemId, brand, size, availableSizes, sizeSystem, on
               you picked size {size}
             </span>
           )}
+        </div>
+      )}
+
+      {/* review-mined sizing skew (real reviews on THIS product) */}
+      {fitSignal && REVIEW_FIT_LINE[fitSignal.direction] && (
+        <div className="mt-3 flex items-start gap-2 text-xs text-gray-600 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-2">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-[#bd4a17]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+          </svg>
+          <span>{REVIEW_FIT_LINE[fitSignal.direction]}</span>
         </div>
       )}
 

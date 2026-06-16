@@ -84,3 +84,5 @@ Thumbs.db
 htmlcov/
 Amazon_Revive_design/
 images/  
+# Seed-time review panel cache (offline heuristics would block keyed LLM runs)
+ml/artifacts/review_summary_cache.json

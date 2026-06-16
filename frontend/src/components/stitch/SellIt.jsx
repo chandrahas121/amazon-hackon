@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import Header from '../Header';
 import api, { generateHealthCard } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { getTier, TIER_INFO, TIER_PHOTO_PROMPTS } from '../../utils/tier';
+import { riskTier, TIER_INFO } from '../../utils/tier';
 // v2: photo prompts come from the CATEGORY profile, not the price tier (Q1/Q7).
 import { capturePrompts, isElectronics, SELLABLE_CATEGORIES } from '../../utils/categoryProfiles';
 
@@ -148,6 +148,18 @@ const ListingSuccess = ({ listing, routeResult, tier, onViewListing }) => {
   const navigate = useNavigate();
   const tierInfo = TIER_INFO[tier];
 
+  // Rule 1 — "List before you move." A personal listing physically moves ONLY when
+  // a buyer exists (or when it must be refurbished / professionally inspected). So a
+  // low/mid-value resell item is NOT scheduled for agent pickup at listing time — it
+  // stays at the seller's home, listed live in Revive, until a nearby buyer appears.
+  // Pickup at listing time applies only to Tier 3 (SPN inspection, handled below) or
+  // the refurbish path (item must travel to a refurb center first).
+  const path = routeResult?.chosen_path;
+  const needsRefurb = path === 'refurbish';
+  const needsPickup = needsRefurb;   // tier 3 is short-circuited before this point
+  // Skip the "agent pickup scheduled" stage for stay-at-home resell listings.
+  const [pickupDone, setPickupDone] = useState(!needsPickup);
+
   // Tier 3 — scheduled for professional SPN inspection, not instantly live
   if (tier === 3) {
     return (
@@ -264,10 +276,55 @@ const ListingSuccess = ({ listing, routeResult, tier, onViewListing }) => {
   }
 
   // Tier 1 / Tier 2 — listed live
-  const path = routeResult?.chosen_path;
   const pathCfg = PATH_CONFIG[path] || PATH_CONFIG.resell_p2p;
-  const price = listing?.price || routeResult?.price;
+  const price = listing?.price || routeResult?.price;   // the actual listed (seller-adjusted) price
 
+  // ── Stage 1 — agent pickup scheduled (refurbish path only; resell stays home) ──
+  if (!pickupDone) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-[#232F3E] rounded-lg px-5 py-4 text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center text-xl">🚚</div>
+            <div>
+              <p className="font-black text-lg">Agent pickup scheduled</p>
+              <p className="text-gray-300 text-xs mt-0.5">An Amazon agent will collect your item from your doorstep in 1–2 days</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#D5D9D9] rounded-lg p-4 shadow-sm space-y-3 text-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+              {listing?.image ? <img src={listing.image} alt="" className="w-full h-full object-contain" /> : '📦'}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-[#0F1111] leading-snug line-clamp-1">{listing?.title || 'Your item'}</p>
+              <p className="text-xs text-gray-500">Pickup window · 1–2 days · {tierInfo.label}</p>
+            </div>
+          </div>
+          <p className="text-gray-600 leading-relaxed border-t border-[#f0f0f0] pt-3">
+            Once the agent collects and verifies it, we'll {needsRefurb ? 'send it for refurbishment and then' : ''} list
+            it on Revive and show you its live status here. You'll get a UPI transfer after the buyer's return window closes.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          {/* Demo control: simulate the agent completing the pickup. */}
+          <button onClick={() => setPickupDone(true)}
+            className="flex-1 py-3 bg-[#febd69] hover:bg-[#f3a847] text-[#131921] font-bold text-sm rounded-lg">
+            Agent collected the item →
+          </button>
+          <button onClick={() => (window.location.href = '/')}
+            className="flex-1 py-3 border border-gray-300 text-gray-700 font-semibold text-sm rounded-lg hover:bg-gray-50">
+            Back to Marketplace
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Stage 2 — pickup done → refurbish + listing status ─────────────────────────
   return (
     <div className="space-y-4 fade-up">
       {/* ── Success banner ── */}
@@ -277,18 +334,22 @@ const ListingSuccess = ({ listing, routeResult, tier, onViewListing }) => {
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#febd69]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-black text-white leading-tight">Your item is live!</h1>
-            <p className="text-[#febd69]/80 text-xs sm:text-sm mt-1">Keep it at home — we'll notify you the moment someone buys it</p>
+            <h1 className="text-lg sm:text-xl font-black text-white leading-tight">{needsRefurb ? 'Picked up — refurbishment in progress' : 'Your item is live!'}</h1>
+            <p className="text-[#febd69]/80 text-xs sm:text-sm mt-1">
+              {needsRefurb
+                ? 'It will list on Revive as soon as refurbishment completes'
+                : 'Keep it at home — we\'ll notify you the moment someone buys it'}
+            </p>
           </div>
         </div>
         {/* progress bar */}
         <div className="px-5 sm:px-6 pb-5">
           <div className="flex items-center gap-2 text-[10px] sm:text-xs text-white/60 mb-2">
-            <span>Listed</span>
+            <span>{needsRefurb ? 'Pickup' : 'Listed'}</span>
             <div className="flex-1 h-0.5 bg-white/20 rounded-full overflow-hidden">
-              <div className="h-full bg-[#febd69] rounded-full" style={{ width: '100%' }}></div>
+              <div className="h-full bg-[#febd69] rounded-full" style={{ width: needsRefurb ? '50%' : '100%' }}></div>
             </div>
-            <span className="text-[#febd69] font-semibold">Live</span>
+            <span className={needsRefurb ? '' : 'text-[#febd69] font-semibold'}>{needsRefurb ? 'Refurbishing' : 'Live'}</span>
           </div>
         </div>
       </div>
@@ -412,9 +473,12 @@ const SellIt = () => {
   const [createdListing, setCreatedListing] = useState(null);
   const [routeResult, setRouteResult] = useState(null);
 
-  // Risk tier (value-based) still drives guarantee/inspection wording, but is
-  // NOT shown to the customer as "Tier N" (Q5). Photo prompts are category-driven.
-  const tier = getTier(mrp);
+  // Risk tier (value × fraud-risk) drives guarantee/inspection wording + routing,
+  // but is NOT shown to the customer as "Tier N" (Q5). Photo prompts are category-
+  // driven. Tier follows the actual SELLING price (current value), not the original
+  // MRP — before grading there's no price yet, so we fall back to the MRP. We use
+  // riskTier (not getTier) so a cheap-but-fraud-prone phone still escalates.
+  const tier = riskTier(price || suggestedPrice || mrp, category);
   const tierInfo = TIER_INFO[tier];
   const electronics = isElectronics(category);
   const hasBattery = category === 'Phone' || category === 'Laptop';   // monitors have no battery/IMEI
@@ -499,7 +563,7 @@ const SellIt = () => {
     // not just at the top of a long form — a silent block looked like "nothing happens".
     const fail = (msg) => { setError(msg); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} };
     if (!title.trim())  { fail('Please add a title.'); return; }
-    if (!mrp)           { fail('Original price is required — it determines the inspection tier.'); return; }
+    if (!mrp)           { fail('Original price is required — it anchors the AI price estimate.'); return; }
     if (!price)         { fail('Asking price is required.'); return; }
     if (parseFloat(price) <= 0) { fail('Asking price must be greater than 0.'); return; }
     if (missingRequired.length) { fail(`Please add all required photos: ${missingRequired.join(', ')}`); return; }
@@ -666,7 +730,7 @@ const SellIt = () => {
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-1.5">
                 Original price (MRP) <span className="text-[#b3261e]">*</span>
-                <span className="text-gray-400 font-normal text-xs ml-1">— sets your inspection tier</span>
+                <span className="text-gray-400 font-normal text-xs ml-1">— helps the AI price your item</span>
               </label>
               <div className="flex items-center border border-[#D5D9D9] rounded bg-white overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-[#FF9900] focus-within:border-[#FF9900]">
                 <span className="px-3 py-2.5 text-sm font-semibold text-gray-500 bg-[#F7F8F8] border-r border-[#D5D9D9] select-none">₹</span>

@@ -20,7 +20,13 @@ const SOURCE_LABEL = {
 };
 const inr = (v) => `₹${parseFloat(v).toLocaleString('en-IN')}`;
 
-const Product = ({ id, title, price, image, grade, source, isNew, mrp, secondLife, rating, ratingCount, lifecycle }) => {
+// Pillar 4 — review-mined sizing skew (matches FitTwin DIRECTION tokens).
+const FIT_PILL = {
+  runs_small: 'Runs small',
+  runs_large: 'Runs large',
+};
+
+const Product = ({ id, title, price, image, grade, source, isNew, mrp, secondLife, rating, ratingCount, lifecycle, fitSignal, reviewSummary }) => {
   const navigate = useNavigate();
   const { addToCart, removeFromCart, updateQuantity, cart, getItemQty } = useCart();
   const inCart = id != null && cart.some((item) => Number(item.id) === Number(id));
@@ -38,6 +44,15 @@ const Product = ({ id, title, price, image, grade, source, isNew, mrp, secondLif
     : (grade === 'A' ? 5 : grade === 'B' ? 4 : grade === 'C' ? 3 : 2);
   const showMrp = !isNew && mrp && parseFloat(mrp) > parseFloat(price);
   const offPct = showMrp ? Math.round((1 - parseFloat(price) / parseFloat(mrp)) * 100) : 0;
+
+  // Pillar-4 browse-time return cues (real review intel, pre-empt returns early).
+  // The fit-skew pill is intentionally NOT shown on the catalog photo tile — the
+  // sizing story belongs on the product page ("What buyers say" + FitTwin), not
+  // stamped on every thumbnail. Keep only the low-return keep-rate cue here.
+  const fitPill = null;
+  const returnRisk = reviewSummary && typeof reviewSummary.return_risk === 'number'
+    ? reviewSummary.return_risk : null;
+  const keepRate = returnRisk != null && returnRisk < 0.2 ? Math.round((1 - returnRisk) * 10) : null;
 
   const handleAdd = (e) => {
     e.stopPropagation();
@@ -94,6 +109,22 @@ const Product = ({ id, title, price, image, grade, source, isNew, mrp, secondLif
           <span className="text-[11px] text-[#007185] ml-1">{ratingCount.toLocaleString('en-IN')}</span>
         )}
       </div>
+
+      {/* Pillar-4 review cues: a fit-skew pill and/or a low-return keep-rate line. */}
+      {(fitPill || keepRate) && (
+        <div className="flex items-center gap-1.5 flex-wrap -mt-0.5 mb-1">
+          {fitPill && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#fbe9dd] text-[#bd4a17]">
+              {fitPill}
+            </span>
+          )}
+          {keepRate && (
+            <span className="text-[11px] text-[#007185] font-medium">
+              ✓ {keepRate} in 10 buyers keep this
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mb-0.5 font-bold text-sm sm:text-base flex items-baseline gap-1.5">
         {inr(price)}

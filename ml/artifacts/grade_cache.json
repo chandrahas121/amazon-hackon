@@ -867,159 +867,92 @@
     "seal_intact": null,
     "latency_ms": 6547
   },
-  "bed58d57930f2a0e01c7180a_5ae6ca": {
-    "grade": "B",
+  "8174675e5cc682f1fb1eb2a1_2d5012": {
+    "grade": "A",
     "confidence": 0.9,
-    "defects": [
-      {
-        "type": "other",
-        "severity": "minor",
-        "location": "sole-tread",
-        "angle": "sole",
-        "angle_label": "Soles"
-      }
-    ],
+    "defects": [],
     "completeness": 1.0,
-    "condition_summary": "The sole exhibits some minor tread wear but is otherwise in very good condition.",
-    "box_present": null,
+    "condition_summary": "The sneakers appear to be in excellent, like-new condition with no visible defects.",
+    "box_present": false,
     "functional": true,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "latency_ms": 4515
+    "latency_ms": 3172
   },
-  "bed58d57930f2a0e01c7180a_g5ae6ca": {
-    "listing_id": "b82deb50-c3f9-4030-9563-e76ceeb0228b",
+  "8174675e5cc682f1fb1eb2a1_g2d5012": {
+    "listing_id": "89f9efc9-5626-4097-ba0e-be43d8909b17",
     "grade": "B",
-    "confidence": 0.9,
-    "defects": [
-      {
-        "type": "other",
-        "severity": "minor",
-        "location": "sole-tread",
-        "angle": "sole",
-        "angle_label": "Soles"
-      }
-    ],
-    "completeness": 0.646,
-    "condition_summary": "The sole exhibits some minor tread wear but is otherwise in very good condition.",
+    "confidence": 0.8,
+    "defects": [],
+    "completeness": 0.638,
+    "condition_summary": "The sneakers appear to be in excellent, like-new condition with no visible defects.",
     "functional": true,
-    "box_present": null,
+    "box_present": false,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "angle": "sole",
-    "angle_label": "Soles",
-    "latency_ms": 18141,
+    "angle": "top",
+    "angle_label": "Top",
+    "latency_ms": 51109,
     "model_version": "revive-grade-v1.0",
-    "image_hash": "bed58d57930f2a0e01c7180a",
+    "image_hash": "8174675e5cc682f1fb1eb2a1",
     "n_dino_detections": 0,
     "from_cache": false
   },
-  "0941facd4689ea11f535a0f1_8e12e5": {
+  "29f65522df18a46610996000_112949": {
     "grade": "B",
-    "confidence": 0.9,
-    "defects": [
-      {
-        "type": "compression",
-        "severity": "minor",
-        "location": "throughout",
-        "angle": "insole",
-        "angle_label": "Insole"
-      }
-    ],
-    "completeness": 1.0,
-    "condition_summary": "The insole shows minor compression wear throughout, but overall the footbed is in very good condition.",
-    "box_present": null,
-    "functional": true,
-    "tags_present": null,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "latency_ms": 4812
-  },
-  "0941facd4689ea11f535a0f1_g8e12e5": {
-    "listing_id": "214d9323-e77a-4b8a-bb8f-8adb37e11353",
-    "grade": "B",
-    "confidence": 0.9,
-    "defects": [
-      {
-        "type": "compression",
-        "severity": "minor",
-        "location": "throughout",
-        "angle": "insole",
-        "angle_label": "Insole"
-      }
-    ],
-    "completeness": 0.673,
-    "condition_summary": "The insole shows minor compression wear throughout, but overall the footbed is in very good condition.",
-    "functional": true,
-    "box_present": null,
-    "tags_present": null,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "angle": "insole",
-    "angle_label": "Insole",
-    "latency_ms": 18594,
-    "model_version": "revive-grade-v1.0",
-    "image_hash": "0941facd4689ea11f535a0f1",
-    "n_dino_detections": 0,
-    "from_cache": false
-  },
-  "6cd19c2970b685354934ebf3_112949": {
-    "grade": "B",
-    "confidence": 0.9,
+    "confidence": 0.8,
     "defects": [
       {
         "type": "scuff",
         "severity": "minor",
-        "location": "side",
+        "location": "left-side",
         "angle": "side",
         "angle_label": "Side"
       },
       {
         "type": "crease",
-        "severity": "minor",
-        "location": "side",
+        "severity": "moderate",
+        "location": "upper-left",
         "angle": "side",
         "angle_label": "Side"
       }
     ],
     "completeness": 1.0,
-    "condition_summary": "The shoe exhibits minor cosmetic wear, including a few scuffs and minor creasing along the side profile, but remains in very good overall condition.",
+    "condition_summary": "The shoes show minor scuffing on the left side and moderate creasing on the upper left area, but are otherwise in very good condition.",
     "box_present": null,
     "functional": true,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "latency_ms": 5093
+    "latency_ms": 3641
   },
-  "6cd19c2970b685354934ebf3_g112949": {
-    "listing_id": "081bcd13-2228-4f9a-9d66-288cf4e4d61f",
+  "29f65522df18a46610996000_g112949": {
+    "listing_id": "3bba6b24-7ce6-49cf-9f6d-4f19221a5329",
     "grade": "B",
     "confidence": 0.72,
     "defects": [
       {
         "type": "scuff",
         "severity": "minor",
-        "location": "side",
+        "location": "left-side",
         "angle": "side",
         "angle_label": "Side"
       },
       {
         "type": "crease",
-        "severity": "minor",
-        "location": "side",
+        "severity": "moderate",
+        "location": "upper-left",
         "angle": "side",
         "angle_label": "Side"
       }
     ],
-    "completeness": 0.693,
-    "condition_summary": "The shoe exhibits minor cosmetic wear, including a few scuffs and minor creasing along the side profile, but remains in very good overall condition.",
+    "completeness": 0.658,
+    "condition_summary": "The shoes show minor scuffing on the left side and moderate creasing on the upper left area, but are otherwise in very good condition.",
     "functional": true,
     "box_present": null,
     "tags_present": null,
@@ -1028,302 +961,111 @@
     "seal_intact": null,
     "angle": "side",
     "angle_label": "Side",
-    "latency_ms": 18875,
+    "latency_ms": 60781,
     "model_version": "revive-grade-v1.0",
-    "image_hash": "6cd19c2970b685354934ebf3",
+    "image_hash": "29f65522df18a46610996000",
     "n_dino_detections": 0,
     "from_cache": false
   },
-  "e057b6a7f03a01de249e27f8_2d5012": {
-    "grade": "B",
-    "confidence": 0.9,
-    "defects": [
-      {
-        "type": "scuffs",
-        "severity": "minor",
-        "location": "side panels",
-        "angle": "top",
-        "angle_label": "Top"
-      }
-    ],
-    "completeness": 0.95,
-    "condition_summary": "The shoe appears to be in overall very good condition, with minor scuffs visible on the side panels.",
-    "box_present": null,
-    "functional": true,
-    "tags_present": null,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "latency_ms": 5422
-  },
-  "e057b6a7f03a01de249e27f8_g2d5012": {
-    "listing_id": "b748af39-ef94-49f4-b34f-b687ce3e1d60",
-    "grade": "B",
-    "confidence": 0.9,
-    "defects": [
-      {
-        "type": "scuffs",
-        "severity": "minor",
-        "location": "side panels",
-        "angle": "top",
-        "angle_label": "Top"
-      }
-    ],
-    "completeness": 0.705,
-    "condition_summary": "The shoe appears to be in overall very good condition, with minor scuffs visible on the side panels.",
-    "functional": true,
-    "box_present": null,
-    "tags_present": null,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "angle": "top",
-    "angle_label": "Top",
-    "latency_ms": 19250,
-    "model_version": "revive-grade-v1.0",
-    "image_hash": "e057b6a7f03a01de249e27f8",
-    "n_dino_detections": 0,
-    "from_cache": false
-  },
-  "b96d8c4e591789a7d0c99537_d11b92": {
-    "grade": "B",
+  "4c3ff074cef6032c7b0c55c7_5ae6ca": {
+    "grade": "C",
     "confidence": 0.8,
     "defects": [
       {
-        "type": "scratch",
-        "severity": "minor",
-        "location": "front-center",
-        "angle": "front",
-        "angle_label": "Front"
+        "type": "wear",
+        "severity": "moderate",
+        "location": "sole",
+        "angle": "sole",
+        "angle_label": "Soles"
       }
     ],
     "completeness": 1.0,
-    "condition_summary": "The water bottle appears to be in very good condition, with only minor cosmetic scratches on the front-center of the body.",
+    "condition_summary": "The soles of these shoes show moderate wear, with visible tread and sole separation from the upper.",
     "box_present": null,
     "functional": true,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "latency_ms": 4203
+    "latency_ms": 3688
   },
-  "b96d8c4e591789a7d0c99537_gd11b92": {
-    "listing_id": "a521416f-d458-4b48-a417-3e3aeac47a7d",
+  "4c3ff074cef6032c7b0c55c7_g5ae6ca": {
+    "listing_id": "19874574-1f8b-4c7a-9d1d-ad9ab842038f",
     "grade": "C",
-    "confidence": 0.65,
+    "confidence": 0.8,
     "defects": [
       {
-        "type": "scratch",
-        "severity": "minor",
-        "location": "front-center",
-        "angle": "front",
-        "angle_label": "Front"
+        "type": "wear",
+        "severity": "moderate",
+        "location": "sole",
+        "angle": "sole",
+        "angle_label": "Soles"
       }
     ],
-    "completeness": 0.351,
-    "condition_summary": "The water bottle appears to be in very good condition, with only minor cosmetic scratches on the front-center of the body.",
+    "completeness": 0.603,
+    "condition_summary": "The soles of these shoes show moderate wear, with visible tread and sole separation from the upper.",
     "functional": true,
     "box_present": null,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "angle": "front",
-    "angle_label": "Front",
-    "latency_ms": 10735,
+    "angle": "sole",
+    "angle_label": "Soles",
+    "latency_ms": 61046,
     "model_version": "revive-grade-v1.0",
-    "image_hash": "b96d8c4e591789a7d0c99537",
+    "image_hash": "4c3ff074cef6032c7b0c55c7",
     "n_dino_detections": 0,
     "from_cache": false
   },
-  "2deddc0bd676869acdff2bc0_3ea829": {
+  "c0c7bb9704baa4e1590ebd13_8e12e5": {
     "grade": "B",
     "confidence": 0.9,
     "defects": [
       {
-        "type": "scratch",
+        "type": "compression",
         "severity": "minor",
-        "location": "bottom-right",
-        "angle": "back",
-        "angle_label": "Back"
+        "location": "center",
+        "angle": "insole",
+        "angle_label": "Insole"
       }
     ],
     "completeness": 1.0,
-    "condition_summary": "The product appears to be in very good condition, with only a minor scratch visible on the bottom-right of the surface.",
+    "condition_summary": "The insole/footbed shows minor compression in the center, but is otherwise in very good condition.",
     "box_present": null,
-    "functional": null,
+    "functional": true,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "latency_ms": 4750
+    "latency_ms": 4313
   },
-  "2deddc0bd676869acdff2bc0_g3ea829": {
-    "listing_id": "d62af2bf-6256-411c-8870-e431bc751f7b",
-    "grade": "C",
-    "confidence": 0.65,
+  "c0c7bb9704baa4e1590ebd13_g8e12e5": {
+    "listing_id": "999882bb-8f21-4189-b8e8-ec88600bd5b3",
+    "grade": "B",
+    "confidence": 0.9,
     "defects": [
       {
-        "type": "scratch",
+        "type": "compression",
         "severity": "minor",
-        "location": "bottom-right",
-        "angle": "back",
-        "angle_label": "Back"
+        "location": "center",
+        "angle": "insole",
+        "angle_label": "Insole"
       }
     ],
-    "completeness": 0.493,
-    "condition_summary": "The product appears to be in very good condition, with only a minor scratch visible on the bottom-right of the surface.",
-    "functional": null,
+    "completeness": 0.599,
+    "condition_summary": "The insole/footbed shows minor compression in the center, but is otherwise in very good condition.",
+    "functional": true,
     "box_present": null,
     "tags_present": null,
     "accessories_present": null,
     "powers_on": null,
     "seal_intact": null,
-    "angle": "back",
-    "angle_label": "Back",
-    "latency_ms": 11282,
+    "angle": "insole",
+    "angle_label": "Insole",
+    "latency_ms": 61750,
     "model_version": "revive-grade-v1.0",
-    "image_hash": "2deddc0bd676869acdff2bc0",
-    "n_dino_detections": 0,
-    "from_cache": false
-  },
-  "3a47f6547d763fb5435b93fa_c9e5a1": {
-    "grade": "A",
-    "confidence": 1.0,
-    "defects": [],
-    "completeness": 1.0,
-    "condition_summary": "The apparel item appears to be in excellent condition with no visible defects in the fabric.",
-    "box_present": null,
-    "functional": null,
-    "tags_present": null,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "latency_ms": 6937
-  },
-  "3a47f6547d763fb5435b93fa_gc9e5a1": {
-    "listing_id": "0dcb0ace-9acf-485a-a9ff-dc6dfaf68e0c",
-    "grade": "A",
-    "confidence": 1.0,
-    "defects": [],
-    "completeness": 0.8,
-    "condition_summary": "The apparel item appears to be in excellent condition with no visible defects in the fabric.",
-    "functional": null,
-    "box_present": null,
-    "tags_present": null,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "angle": "fabric",
-    "angle_label": "Fabric close-up",
-    "latency_ms": 16297,
-    "model_version": "revive-grade-v1.0",
-    "image_hash": "3a47f6547d763fb5435b93fa",
-    "n_dino_detections": 0,
-    "from_cache": false
-  },
-  "3a47f6547d763fb5435b93fa_1becbf": {
-    "grade": "A",
-    "confidence": 1.0,
-    "defects": [],
-    "completeness": 1.0,
-    "condition_summary": "The hoodie appears to be in excellent condition with no visible defects or damage.",
-    "box_present": null,
-    "functional": true,
-    "tags_present": true,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "latency_ms": 7094
-  },
-  "3a47f6547d763fb5435b93fa_g1becbf": {
-    "listing_id": "76acf26b-074c-4b89-ad2c-97e0fc060b8c",
-    "grade": "A",
-    "confidence": 1.0,
-    "defects": [],
-    "completeness": 0.8,
-    "condition_summary": "The hoodie appears to be in excellent condition with no visible defects or damage.",
-    "functional": true,
-    "box_present": null,
-    "tags_present": true,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "angle": "front",
-    "angle_label": "Front",
-    "latency_ms": 16437,
-    "model_version": "revive-grade-v1.0",
-    "image_hash": "3a47f6547d763fb5435b93fa",
-    "n_dino_detections": 0,
-    "from_cache": false
-  },
-  "3a47f6547d763fb5435b93fa_fce448": {
-    "grade": "A",
-    "confidence": 0.95,
-    "defects": [],
-    "completeness": 1.0,
-    "condition_summary": "The hoodie appears to be in excellent condition with no visible defects or damage on the back side.",
-    "box_present": null,
-    "functional": true,
-    "tags_present": true,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "latency_ms": 7250
-  },
-  "3a47f6547d763fb5435b93fa_gfce448": {
-    "listing_id": "4b1d8217-6710-480c-8d7d-4e16351b4271",
-    "grade": "A",
-    "confidence": 0.95,
-    "defects": [],
-    "completeness": 0.8,
-    "condition_summary": "The hoodie appears to be in excellent condition with no visible defects or damage on the back side.",
-    "functional": true,
-    "box_present": null,
-    "tags_present": true,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "angle": "back",
-    "angle_label": "Back",
-    "latency_ms": 16610,
-    "model_version": "revive-grade-v1.0",
-    "image_hash": "3a47f6547d763fb5435b93fa",
-    "n_dino_detections": 0,
-    "from_cache": false
-  },
-  "3a47f6547d763fb5435b93fa_d773bf": {
-    "grade": "A",
-    "confidence": 1.0,
-    "defects": [],
-    "completeness": 1.0,
-    "condition_summary": "The product appears to be in excellent condition, with the original brand and size tags intact.",
-    "box_present": null,
-    "functional": null,
-    "tags_present": true,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "latency_ms": 4547
-  },
-  "3a47f6547d763fb5435b93fa_gd773bf": {
-    "listing_id": "8727c0f0-e90e-4919-8000-225bb4b43776",
-    "grade": "A",
-    "confidence": 1.0,
-    "defects": [],
-    "completeness": 0.8,
-    "condition_summary": "The product appears to be in excellent condition, with the original brand and size tags intact.",
-    "functional": null,
-    "box_present": null,
-    "tags_present": true,
-    "accessories_present": null,
-    "powers_on": null,
-    "seal_intact": null,
-    "angle": "label",
-    "angle_label": "Label / Tag",
-    "latency_ms": 39985,
-    "model_version": "revive-grade-v1.0",
-    "image_hash": "3a47f6547d763fb5435b93fa",
+    "image_hash": "c0c7bb9704baa4e1590ebd13",
     "n_dino_detections": 0,
     "from_cache": false
   }

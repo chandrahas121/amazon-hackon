@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ShieldCheck, Star, Heart, Share2, Tag, Truck, RefreshCw, Smartphone, ChevronLeft } from 'lucide-react'
 import Header from '../components/Header'
+import LifecycleTimeline from '../components/LifecycleTimeline'
 import HealthCard from '../components/stitch/HealthCard'
 import VirtualTryOn from '../components/stitch/VirtualTryOn'
 import FitTwin from '../components/stitch/FitTwin'
-import LifecycleTimeline from '../components/LifecycleTimeline'
 import api, { getHealthCard, advanceListingStage } from '../api/client'
 import { useCart } from '../context/CartContext'
 
@@ -171,6 +171,88 @@ const ReviewsSection = ({ ratings, reviews }) => {
   )
 }
 
+// Pillar-4 "What buyers say" card — review-mined pros/cons + fit verdict, fed by the
+// detail endpoint's review_summary / fit_signal. Pure presentation; renders nothing
+// when there's no mined intel.
+const FIT_TENDENCY = {
+  runs_small: 'Buyers say this tends to run small — consider sizing up.',
+  runs_large: 'Buyers say this tends to run large — consider sizing down.',
+  true_to_size: 'Buyers say this fits true to size.',
+}
+
+const BuyersSayCard = ({ summary, fitSignal }) => {
+  const s = summary || {}
+  const pros = s.pros || []
+  const cons = s.cons || []
+  const reasons = (s.return_reasons || []).filter((r) => r && r.reason).slice(0, 2)
+  const fitLine = s.fit_verdict || (fitSignal && FIT_TENDENCY[fitSignal.direction]) || ''
+  const hasBody = s.tldr || pros.length || cons.length || fitLine || reasons.length
+  if (!hasBody) return null
+
+  return (
+    <section className="bg-white border border-[#D5D9D9] rounded-lg mt-4 px-4 py-5 sm:px-6">
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-lg sm:text-xl font-bold text-[#0F1111]">What buyers say</h2>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#232F3E] text-[#febd69]">
+          AI summary
+        </span>
+      </div>
+
+      {s.tldr && <p className="text-sm text-[#0F1111] leading-relaxed mb-4">{s.tldr}</p>}
+
+      {(pros.length > 0 || cons.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="text-sm font-bold text-[#0F1111] mb-1.5">Pros</p>
+            <ul className="space-y-1">
+              {pros.length === 0 && <li className="text-sm text-gray-400">—</li>}
+              {pros.map((p, i) => (
+                <li key={i} className="flex gap-1.5 text-sm text-[#0F1111]">
+                  <span className="text-[#007600] font-bold leading-5">✓</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#0F1111] mb-1.5">Cons</p>
+            <ul className="space-y-1">
+              {cons.length === 0 && <li className="text-sm text-gray-400">—</li>}
+              {cons.map((c, i) => (
+                <li key={i} className="flex gap-1.5 text-sm text-[#565959]">
+                  <span className="text-[#bd4a17] font-bold leading-5">–</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Fit & sizing callout — mirrors the "AI Condition Notes" pattern */}
+      {fitLine && (
+        <div className="border-l-4 border-[#FF9900] bg-[#FFFBF0] rounded-r p-3 mb-3">
+          <p className="text-xs font-bold text-[#0F1111] mb-1">Fit &amp; sizing</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{fitLine}</p>
+        </div>
+      )}
+
+      {reasons.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 mb-1.5">Why a few people return this</p>
+          <div className="flex flex-wrap gap-1.5">
+            {reasons.map((r, i) => (
+              <span key={i} className="text-[11px] text-gray-600 bg-[#F0F2F2] border border-[#D5D9D9] rounded-full px-2.5 py-0.5">
+                {r.reason}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 const ProductDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -207,8 +289,18 @@ const ProductDetailPage = () => {
       .finally(() => setLoading(false))
   }, [id])
 
-  const inCart = cart.some((item) => Number(item.id) === Number(id))
-  const cartQty = getItemQty(id)
+  // For sized (clothing) items the cart line is per-size, so "in cart" / qty must be
+  // judged against the size the shopper is currently looking at — that way after
+  // adding size M the Add button stays available to ALSO add size L (which is exactly
+  // the size-hedge we want checkout to flag as bracketeering).
+  const sizedItem = isClothing(listing?.product?.category || '')
+  const lineMatch = (item) =>
+    Number(item.id) === Number(id) &&
+    (!sizedItem || String(item.size ?? '') === String(selectedSize ?? ''))
+  const currentLine = cart.find(lineMatch)
+  const inCart = !!currentLine
+  const cartQty = cart.filter(lineMatch).reduce((s, i) => s + (i.qty || 1), 0)
+  const currentKey = currentLine?.lineKey ?? id
   const isSecondLife = listing ? listing.source !== 'new' : false
   const maxStock = listing?.stock ?? (isSecondLife ? 1 : 10)
 
@@ -242,11 +334,11 @@ const ProductDetailPage = () => {
   }
 
   const handleIncrement = () => {
-    if (cartQty < maxStock) updateQuantity(id, cartQty + 1)
+    if (cartQty < maxStock) updateQuantity(currentKey, cartQty + 1)
   }
   const handleDecrement = () => {
-    if (cartQty > 1) updateQuantity(id, cartQty - 1)
-    else removeFromCart(id)
+    if (cartQty > 1) updateQuantity(currentKey, cartQty - 1)
+    else removeFromCart(currentKey)
   }
 
   if (loading) return (
@@ -424,6 +516,23 @@ const ProductDetailPage = () => {
               </div>
             )}
 
+            {listing.images && listing.images.length > 0 && !listing.is_new && (
+              <div className="mb-4">
+                <p className="text-xs font-bold text-[#0F1111] mb-1.5">Seller photos</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {listing.images.map((im, i) => (
+                    <div key={i} className="flex-shrink-0 w-20">
+                      <div className="w-20 h-20 rounded border border-[#D5D9D9] bg-white flex items-center justify-center overflow-hidden">
+                        <img src={im.url} alt={im.label} className="max-w-full max-h-full object-contain"
+                          onError={(e) => { e.target.style.display = 'none' }} />
+                      </div>
+                      <p className="text-[10px] text-gray-500 text-center mt-0.5">{im.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* v2 second-life lifecycle — where this item is in its journey */}
             {lc && (
               <div className="mb-4">
@@ -436,8 +545,6 @@ const ProductDetailPage = () => {
                 />
               </div>
             )}
-
-
 
             {/* Delivery / Returns / Ships from / Sold by */}
             <div className="border border-[#D5D9D9] rounded divide-y divide-[#D5D9D9] mb-5 text-sm">
@@ -591,6 +698,18 @@ const ProductDetailPage = () => {
                       +
                     </button>
                   </div>
+                  {isSecondLife && (
+                    <p className="text-[11px] text-center text-amber-600">One-of-a-kind item · qty 1 only</p>
+                  )}
+                  {!isSecondLife && cartQty >= maxStock && (
+                    <p className="text-[11px] text-center text-amber-600">Maximum available stock reached</p>
+                  )}
+                  <button
+                    onClick={() => removeFromCart(currentKey)}
+                    className="w-full text-center text-xs text-[#007185] hover:text-[#c45500] hover:underline py-1"
+                  >
+                    Remove from cart
+                  </button>
                 </div>
               ) : (
                 <button
@@ -643,6 +762,7 @@ const ProductDetailPage = () => {
                   size={selectedSize}
                   availableSizes={SIZES}
                   sizeSystem="letter"
+                  fitSignal={listing.fit_signal}
                 />
               )}
 
@@ -705,6 +825,9 @@ const ProductDetailPage = () => {
           )}
 
         </div>
+
+        {/* ── What buyers say (Pillar-4 review intelligence) ── */}
+        <BuyersSayCard summary={listing.review_summary} fitSignal={listing.fit_signal} />
 
         {/* ── Customer reviews (real Amazon Reviews 2023 data) ── */}
         {listing.reviews && (

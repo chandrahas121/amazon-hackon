@@ -210,18 +210,53 @@ def score_risk(
                 category, brand, size_delta, prior, is_gift, user_return_rate
             )
 
+        # ── Fold in seed-time review intelligence (ml/review_insights) ──────────
+        # review_summary.return_risk raises the floor; a non-neutral fit signal bumps
+        # risk and carries a ready-made "buyers say this runs small" nudge line.
+        review_summary = item.get("review_summary") or {}
+        fit_signal = item.get("fit_signal") or {}
+        rr = review_summary.get("return_risk")
+        if isinstance(rr, (int, float)):
+            risk_score = max(risk_score, float(rr))
+        direction = fit_signal.get("direction")
+        if direction and direction != "true_to_size":
+            risk_score = min(1.0, risk_score + 0.12 * float(fit_signal.get("confidence", 0.5) or 0.5))
+
         item_risks.append({
             "product_id": item.get("product_id", "unknown"),
             "category": category,
             "brand": brand,
             "risk": round(risk_score, 3),
+            "nudge_line": (review_summary.get("nudge_line") or "").strip(),
+            "fit_direction": direction or "",
         })
+
+    # ── Bracketeering: same product added in ≥2 distinct sizes ───────────────────
+    # A "size hedge" (buy S+M+L, keep one, return the rest) is a top return driver.
+    # `size` collapses letter sizes to 0, so detect on the raw size_label instead.
+    from collections import defaultdict
+    sizes_by_product: Dict[str, set] = defaultdict(set)
+    for it in cart_items:
+        lbl = str(it.get("size_label") or "").strip()
+        if lbl:
+            sizes_by_product[str(it.get("product_id"))].add(lbl)
+    bracket_pid = next((pid for pid, s in sizes_by_product.items() if len(s) >= 2), None)
+    bracket_nudge = ""
+    if bracket_pid:
+        n_sizes = len(sizes_by_product[bracket_pid])
+        bracket_nudge = (
+            f"You've added {n_sizes} different sizes of the same item. Ordering several "
+            f"sizes to send the rest back delays your refund and adds return waste — use "
+            f"the fit guide to pick your best size and keep just one."
+        )
 
     if not item_risks:
         return {
             "risk": 0.0,
             "flagged_item_id": None,
             "nudge_text": "",
+            "bracket_nudge": bracket_nudge,
+            "bracket_product_id": bracket_pid,
             "credit_promise": 0,
             "breakdown": [],
         }
@@ -240,7 +275,9 @@ def score_risk(
         - float(user_history.get("size_history", {}).get(flagged["category"], 0))
     )
 
-    nudge = _nudge_text(
+    # Prefer the review-derived nudge ("Buyers say this runs small …") when the mined
+    # fit signal produced one; otherwise fall back to the profile/brand heuristic.
+    nudge = flagged.get("nudge_line") or _nudge_text(
         overall_risk,
         flagged["brand"],
         size_delta,
@@ -255,6 +292,8 @@ def score_risk(
         "risk": round(overall_risk, 3),
         "flagged_item_id": flagged["product_id"],
         "nudge_text": nudge,
+        "bracket_nudge": bracket_nudge,
+        "bracket_product_id": bracket_pid,
         "credit_promise": credit_promise,
         "breakdown": item_risks,
     }
