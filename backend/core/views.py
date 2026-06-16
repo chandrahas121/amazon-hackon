@@ -554,7 +554,10 @@ class OrderListCreateView(APIView):
             Order.objects
             .filter(user=request.user)
             .select_related('listing__product')
-            .order_by('-created_at')
+            # Most-recent first. -id is a strictly-increasing tiebreaker so orders
+            # created within the same clock tick (seeded demo data, coarse Windows
+            # timestamps) still sort newest-first deterministically.
+            .order_by('-created_at', '-id')
         )
         return Response({'results': OrderSerializer(orders, many=True).data, 'count': orders.count()})
 

@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import Header from '../Header';
 import api, { generateHealthCard } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { getTier, TIER_INFO, TIER_PHOTO_PROMPTS } from '../../utils/tier';
+import { riskTier, TIER_INFO } from '../../utils/tier';
 // v2: photo prompts come from the CATEGORY profile, not the price tier (Q1/Q7).
 import { capturePrompts, isElectronics, SELLABLE_CATEGORIES } from '../../utils/categoryProfiles';
 
@@ -147,10 +147,18 @@ const AngleDefectMaps = ({ result }) => {
 const ListingSuccess = ({ listing, routeResult, tier, onViewListing }) => {
   const navigate = useNavigate();
   const tierInfo = TIER_INFO[tier];
-  // The refurbish + listing status is the "advanced" stage — it only makes sense once
-  // the agent has actually collected the item. So after publishing we first show the
-  // regular "agent pickup scheduled" state and reveal that status only after pickup.
-  const [pickupDone, setPickupDone] = useState(false);
+
+  // Rule 1 — "List before you move." A personal listing physically moves ONLY when
+  // a buyer exists (or when it must be refurbished / professionally inspected). So a
+  // low/mid-value resell item is NOT scheduled for agent pickup at listing time — it
+  // stays at the seller's home, listed live in Revive, until a nearby buyer appears.
+  // Pickup at listing time applies only to Tier 3 (SPN inspection, handled below) or
+  // the refurbish path (item must travel to a refurb center first).
+  const path = routeResult?.chosen_path;
+  const needsRefurb = path === 'refurbish';
+  const needsPickup = needsRefurb;   // tier 3 is short-circuited before this point
+  // Skip the "agent pickup scheduled" stage for stay-at-home resell listings.
+  const [pickupDone, setPickupDone] = useState(!needsPickup);
 
   // Tier 3 — scheduled for professional SPN inspection, not instantly live
   if (tier === 3) {
@@ -268,12 +276,10 @@ const ListingSuccess = ({ listing, routeResult, tier, onViewListing }) => {
   }
 
   // Tier 1 / Tier 2 — listed live
-  const path = routeResult?.chosen_path;
   const pathCfg = PATH_CONFIG[path] || PATH_CONFIG.resell_p2p;
   const price = listing?.price || routeResult?.price;   // the actual listed (seller-adjusted) price
-  const needsRefurb = path === 'refurbish';
 
-  // ── Stage 1 — agent pickup scheduled (regular flow, before any status) ─────────
+  // ── Stage 1 — agent pickup scheduled (refurbish path only; resell stays home) ──
   if (!pickupDone) {
     return (
       <div className="space-y-4">
@@ -467,11 +473,12 @@ const SellIt = () => {
   const [createdListing, setCreatedListing] = useState(null);
   const [routeResult, setRouteResult] = useState(null);
 
-  // Risk tier (value-based) still drives guarantee/inspection wording, but is
-  // NOT shown to the customer as "Tier N" (Q5). Photo prompts are category-driven.
-  // Tier follows the actual SELLING price (current value), not the original MRP —
-  // before grading there's no price yet, so we fall back to the MRP as an estimate.
-  const tier = getTier(price || suggestedPrice || mrp);
+  // Risk tier (value × fraud-risk) drives guarantee/inspection wording + routing,
+  // but is NOT shown to the customer as "Tier N" (Q5). Photo prompts are category-
+  // driven. Tier follows the actual SELLING price (current value), not the original
+  // MRP — before grading there's no price yet, so we fall back to the MRP. We use
+  // riskTier (not getTier) so a cheap-but-fraud-prone phone still escalates.
+  const tier = riskTier(price || suggestedPrice || mrp, category);
   const tierInfo = TIER_INFO[tier];
   const electronics = isElectronics(category);
   const hasBattery = category === 'Phone' || category === 'Laptop';   // monitors have no battery/IMEI

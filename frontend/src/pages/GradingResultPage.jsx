@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, CheckCircle2, ChevronLeft } from 'lucide-react';
 import Header from '../components/Header';
 import { inspectReturn, routeItem, generateHealthCard, processReturn } from '../api/client';
-import { getTier, TIER_INFO, estimateGreenCredits } from '../utils/tier';
+import { riskTier, TIER_INFO, estimateGreenCredits } from '../utils/tier';
 // v2 (point 1): return capture prompts come from the CATEGORY, not the price tier.
 import { capturePrompts } from '../utils/categoryProfiles';
 import LifecycleTimeline from '../components/LifecycleTimeline';
@@ -66,7 +66,11 @@ const GradingResultPage = () => {
   const cfg = GRADE_CFG[grade] || GRADE_CFG.B;
   const confidence = result?.confidence != null ? Math.round(result.confidence * 100) : 88;
   const route = result?.route || null;
-  const tier = route?.tier || order?.listing_tier || getTier(mrp);
+  // Risk tier from value × fraud-risk is the FLOOR — the backend may escalate
+  // higher, but a phone must never fall back to Tier 1 (which would offer kirana).
+  // This guards against the route endpoint's tier:1 fallback when ML is degraded.
+  const backendTier = route?.tier || order?.listing_tier || 0;
+  const tier = Math.max(backendTier, riskTier(mrp, category));
   const tierInfo = TIER_INFO[tier];
   const defects = result?.defects || [];
   const conditionSummary = result?.condition_summary || cfg.desc;
